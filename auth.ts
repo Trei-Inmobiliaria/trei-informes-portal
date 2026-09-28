@@ -11,6 +11,7 @@ const DEFAULT_ALLOW = [
   "pelgueta@trei.cl",
   "finanzas@trei.cl",
   "nicole.jaramillo@ivcb.cl",
+  "pablo.macias@trei.cl",
 ];
 
 const ALLOWLIST = (process.env.ALLOWED_EMAILS
@@ -21,7 +22,7 @@ const ALLOWLIST = (process.env.ALLOWED_EMAILS
   .filter(Boolean);
 
 // El UPN de un invitado B2B llega como
-//   nombre_dominio.cl#EXT#@treicl.onmicrosoft.com
+// nombre_dominio.cl#EXT#@treicl.onmicrosoft.com
 // y el correo real viene en el claim `email`. Por eso ese va primero.
 function correoReal(claims: any): string {
   const directo =
