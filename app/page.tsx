@@ -2,6 +2,15 @@ import { auth, signOut } from "@/auth";
 
 const INFORMES = [
   {
+    ctag: "Ventas & Leads",
+    title: "Informe Comercial",
+    desc: "Ventas, leads y estado comercial en tiempo real por proyecto.",
+    tags: ["Por proyecto", "Leads", "Reservas", "Se abre en trei.cl"],
+    // Vive en trei.cl con su propio Entra (mismo tenant → SSO, sin segunda clave).
+    href: "https://trei.cl/informe_ventas/",
+    icon: <path d="M4 20V10M10 20V4M16 20V13M3 20h18" />,
+  },
+  {
     ctag: "Cartera de Clientes",
     title: "Cobranza",
     desc: "Cartera por proyecto y conciliación de ingresos en vivo: recaudación del mes, bandejas por conciliar y Transbank/TOKU.",
@@ -20,6 +29,15 @@ const INFORMES = [
     icon: (
       <path d="M3 21h18M4 21V10m4 11V10m4 11V10m4 11V10m4 11V10M12 3 3.5 8h17L12 3Z" />
     ),
+  },
+  {
+    ctag: "Finanzas",
+    title: "Reportería de Contabilidad",
+    desc: "Balance, estado de resultados y cuentas por pagar del grupo. Acceso por correo, validado con Microsoft Entra.",
+    tags: ["Balance", "EERR", "Cuentas por pagar"],
+    // App propia con su candado Entra (mismo tenant → SSO). Enlace directo.
+    href: "https://reporteria-contabilidad.vercel.app/",
+    icon: <path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h4" />,
   },
 ];
 
@@ -76,22 +94,32 @@ export default async function Home() {
         </p>
 
         <section className="grid">
-          {INFORMES.map((it) => (
-            <a className="card" key={it.title} href={it.href}>
-              <span className="ico" aria-hidden="true">
-                <svg viewBox="0 0 24 24">{it.icon}</svg>
-              </span>
-              <p className="ctag">{it.ctag}</p>
-              <h2>{it.title}</h2>
-              <p className="desc">{it.desc}</p>
-              <ul className="tags">
-                {it.tags.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-              </ul>
-              <span className="cta">Entrar {arrow}</span>
-            </a>
-          ))}
+          {INFORMES.map((it) => {
+            const external = it.href.startsWith("http");
+            return (
+              <a
+                className="card"
+                key={it.title}
+                href={it.href}
+                {...(external
+                  ? { target: "_blank", rel: "noopener noreferrer" }
+                  : {})}
+              >
+                <span className="ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">{it.icon}</svg>
+                </span>
+                <p className="ctag">{it.ctag}</p>
+                <h2>{it.title}</h2>
+                <p className="desc">{it.desc}</p>
+                <ul className="tags">
+                  {it.tags.map((t) => (
+                    <li key={t}>{t}</li>
+                  ))}
+                </ul>
+                <span className="cta">Entrar {arrow}</span>
+              </a>
+            );
+          })}
         </section>
 
         <footer>
