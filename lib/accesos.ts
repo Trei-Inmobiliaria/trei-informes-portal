@@ -177,10 +177,18 @@ async function ubicarStore(c: Conexion, token: string): Promise<Ubicacion> {
   const candidatos = Array.from(new Set([env, "", ...equipos.map((t) => t.id)]));
   const apis = [c.api, c.api === "global-config" ? "edge-config" : "global-config"];
   let noAutorizado = false;
+  const intentos: string[] = [];
   for (const api of apis) {
     for (const team of candidatos) {
       const qs = team ? `?teamId=${encodeURIComponent(team)}` : "";
       const r = await fetch(`https://api.vercel.com/v1/${api}/${c.id}${qs}`, { headers: auth, cache: "no-store" });
+      let codigo = "";
+      if (!r.ok) {
+        try {
+          codigo = (await r.clone().json())?.error?.code || "";
+        } catch {}
+      }
+      intentos.push(`${api} ${team || "personal"} → ${r.status}${codigo ? " " + codigo : ""}`);
       if (r.ok) {
         if (team !== env)
           console.warn(`[accesos] el store está en el equipo ${team || "(personal)"}, no en VERCEL_TEAM_ID`);
@@ -198,6 +206,8 @@ async function ubicarStore(c: Conexion, token: string): Promise<Ubicacion> {
       `El token no encuentra el store ${c.id} en ningún equipo al que tiene acceso`,
       `Equipos del token: ${vistos}`,
       noAutorizado ? "Vercel rechazó el token en algún equipo (401/403)" : "",
+      `VERCEL_TEAM_ID configurado: ${env || "(vacío)"}`,
+      `Intentos: ${intentos.join("; ")}`,
       "Crea el token con alcance en el equipo dueño del Global Config y vuelve a hacer Redeploy",
     ]
       .filter(Boolean)
