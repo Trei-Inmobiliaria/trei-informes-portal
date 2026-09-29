@@ -40,6 +40,7 @@ export default function GestorAccesos({
   inicial,
   origen: origenInicial,
   escribible,
+  faltas,
   superAdmins,
   yo,
   panelSaludUrl,
@@ -47,6 +48,7 @@ export default function GestorAccesos({
   inicial: Accesos;
   origen: Origen;
   escribible: boolean;
+  faltas: string[];
   superAdmins: string[];
   yo: string;
   panelSaludUrl: string;
@@ -145,9 +147,14 @@ export default function GestorAccesos({
       {/* ── Estado del almacenamiento ── */}
       {!escribible ? (
         <div className="aviso">
-          <b>Modo solo lectura.</b> Edge Config no está conectado a este proyecto
-          (faltan <code>EDGE_CONFIG</code> y/o <code>VERCEL_API_TOKEN</code>). Se
-          muestra la lista semilla que hoy controla el login.
+          <b>Modo solo lectura.</b> Se muestra la lista semilla que hoy controla el
+          login. Para poder guardar falta:
+          <ul className="faltas">
+            {faltas.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+          Después de agregar o renombrar variables en Vercel hay que hacer Redeploy.
         </div>
       ) : origen === "semilla" ? (
         <div className="aviso aviso-info">

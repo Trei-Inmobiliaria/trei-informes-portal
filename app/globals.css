@@ -180,6 +180,7 @@ footer .sep{color:var(--borde-fuerte)}
   border-radius:10px;padding:11px 14px;font-size:13px;max-width:760px;
 }
 .aviso code{font-size:12px;background:#fdecc4;padding:1px 5px;border-radius:4px}
+.aviso .faltas{margin:6px 0;padding-left:18px}
 .aviso-info{background:#eef5ff;border-color:#cfe0fb;color:#1d4b8f}
 .vacio{color:var(--gris);font-size:13px;padding:18px}
 

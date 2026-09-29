@@ -7,7 +7,7 @@ import { INFORME_IDS, type InformeId } from "@/lib/informes";
 // en el middleware es una sola request barata y la escritura es atómica.
 //
 // Env vars (Vercel → Portal):
-//   EDGE_CONFIG        — connection string (la agrega Vercel al conectar el
+//   EDGE_CONFIG        — (o GLOBAL_CONFIG) connection string (la agrega Vercel al conectar el
 //                        Edge Config al proyecto): https://edge-config.vercel.com/ecfg_…?token=…
 //   VERCEL_API_TOKEN   — token con permiso de escritura sobre ese Edge Config.
 //   VERCEL_TEAM_ID     — opcional, si el Edge Config vive en un team.
@@ -82,8 +82,11 @@ function semilla(): Accesos {
   };
 }
 
+// Vercel a veces crea la variable con otro nombre al conectar el Edge Config.
+const edgeConfigCs = () => process.env.EDGE_CONFIG || process.env.GLOBAL_CONFIG || "";
+
 function conexion(): { id: string; token: string } | null {
-  const cs = process.env.EDGE_CONFIG;
+  const cs = edgeConfigCs();
   if (!cs) return null;
   try {
     const u = new URL(cs);
@@ -129,6 +132,19 @@ export async function leerAccesos(
 
 export function puedeEscribir(): boolean {
   return !!conexion() && !!process.env.VERCEL_API_TOKEN;
+}
+
+// Qué falta para poder guardar, en palabras para el aviso de solo lectura.
+// Nunca incluye valores de las variables.
+export function faltasEscritura(): string[] {
+  const faltas: string[] = [];
+  if (!edgeConfigCs()) faltas.push("No hay variable EDGE_CONFIG (ni GLOBAL_CONFIG) en este deploy.");
+  else if (!conexion())
+    faltas.push(
+      "EDGE_CONFIG existe pero no tiene el formato https://edge-config.vercel.com/ecfg_…?token=…"
+    );
+  if (!process.env.VERCEL_API_TOKEN) faltas.push("No hay variable VERCEL_API_TOKEN en este deploy.");
+  return faltas;
 }
 
 export async function guardarAccesos(valor: Accesos): Promise<void> {
