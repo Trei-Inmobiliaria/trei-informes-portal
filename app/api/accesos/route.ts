@@ -99,7 +99,10 @@ export async function PUT(request: NextRequest) {
     await guardarAccesos(valor);
   } catch (e: any) {
     console.error("[accesos] escritura falló:", e);
-    return NextResponse.json({ error: "No se pudo guardar en Edge Config." }, { status: 502 });
+    return NextResponse.json(
+      { error: `No se pudo guardar en Edge Config. ${e?.message || ""}`.trim() },
+      { status: 502 }
+    );
   }
   return NextResponse.json({ accesos: valor, origen: "edge-config", cambios: eventos.length });
 }

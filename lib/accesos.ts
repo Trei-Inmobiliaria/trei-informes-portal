@@ -157,7 +157,23 @@ export async function guardarAccesos(valor: Accesos): Promise<void> {
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ items: [{ operation: "upsert", key: KEY, value: valor }] }),
   });
-  if (!r.ok) throw new Error(`Vercel API ${r.status}: ${await r.text()}`);
+  if (!r.ok) {
+    // Vercel responde { error: { code, message } }; nunca incluye el token.
+    let detalle = "";
+    try {
+      const j = await r.json();
+      detalle = [j?.error?.code, j?.error?.message].filter(Boolean).join(": ");
+    } catch {}
+    const pista =
+      r.status === 401 || r.status === 403
+        ? "El token (VERCEL_API_TOKEN) no es válido o no tiene acceso al equipo del Edge Config (revisa VERCEL_TEAM_ID y el alcance del token)."
+        : r.status === 404
+          ? "No se encontró el Edge Config con ese equipo: revisa que VERCEL_TEAM_ID sea el del equipo dueño del Edge Config."
+          : "";
+    throw new Error(
+      [`Vercel respondió ${r.status}`, detalle.slice(0, 200), pista].filter(Boolean).join(". ")
+    );
+  }
   // Edge Config tarda unos segundos en propagar: esta instancia ve el cambio ya.
   cache = { valor, origen: "edge-config", ts: Date.now() };
 }
