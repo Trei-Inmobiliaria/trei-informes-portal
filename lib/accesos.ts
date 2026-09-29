@@ -10,7 +10,8 @@ import { INFORME_IDS, type InformeId } from "@/lib/informes";
 //   EDGE_CONFIG        — (o GLOBAL_CONFIG) connection string (la agrega Vercel al conectar el
 //                        Edge Config al proyecto): https://edge-config.vercel.com/ecfg_…?token=…
 //   VERCEL_API_TOKEN   — token con permiso de escritura sobre ese Edge Config.
-//   VERCEL_TEAM_ID     — opcional, si el Edge Config vive en un team.
+//   VERCEL_TEAM_ID     — opcional, si el Edge Config vive en un team: el ID
+//                        (team_…) o el nombre corto de la URL (se envía como slug).
 //   ADMIN_EMAILS       — super-admins (coma). Siempre entran y siempre son admin,
 //                        para que nadie pueda dejarse fuera desde la UI.
 //   ALLOWED_EMAILS     — lista semilla mientras Edge Config está vacío.
@@ -180,7 +181,12 @@ async function ubicarStore(c: Conexion, token: string): Promise<Ubicacion> {
   const intentos: string[] = [];
   for (const api of apis) {
     for (const team of candidatos) {
-      const qs = team ? `?teamId=${encodeURIComponent(team)}` : "";
+      // Vercel acepta el ID (team_…) como teamId o el nombre corto de la URL como slug.
+      const qs = !team
+        ? ""
+        : team.startsWith("team_")
+          ? `?teamId=${encodeURIComponent(team)}`
+          : `?slug=${encodeURIComponent(team)}`;
       const r = await fetch(`https://api.vercel.com/v1/${api}/${c.id}${qs}`, { headers: auth, cache: "no-store" });
       let codigo = "";
       if (!r.ok) {
