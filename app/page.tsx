@@ -1,45 +1,9 @@
-import { auth, signOut } from "@/auth";
+import { auth } from "@/auth";
+import { permisoActual } from "@/lib/accesos";
+import { INFORMES } from "@/lib/informes";
+import Topbar from "@/app/components/Topbar";
 
-const INFORMES = [
-  {
-    ctag: "Ventas & Leads",
-    title: "Informe Comercial",
-    desc: "Ventas, leads y estado comercial en tiempo real por proyecto.",
-    tags: ["Por proyecto", "Leads", "Reservas", "Se abre en trei.cl"],
-    // Vive en trei.cl con su propio Entra (mismo tenant → SSO, sin segunda clave).
-    href: "https://trei.cl/informe_ventas/",
-    icon: <path d="M4 20V10M10 20V4M16 20V13M3 20h18" />,
-  },
-  {
-    ctag: "Cartera de Clientes",
-    title: "Cobranza",
-    desc: "Cartera por proyecto y conciliación de ingresos en vivo: recaudación del mes, bandejas por conciliar y Transbank/TOKU.",
-    tags: ["Por proyecto", "Conciliación", "Recaudación"],
-    // Pasa por el puente SSO firmado; `next` aterriza en la sección de cobranza.
-    href: "/ir/reportes?next=%2Fcobranza",
-    icon: <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z M9 8h6 M9 12h6" />,
-  },
-  {
-    ctag: "Caja, Bancos & Deuda",
-    title: "Tesorería y Control de Deuda",
-    desc: "Posición de caja por sociedad y conciliación bancaria, junto con la deuda financiera del grupo: créditos, acreedores, perfil de vencimientos y costo promedio ponderado (WACD).",
-    tags: ["Posición de caja", "Movimientos", "Créditos", "Acreedores", "Vencimientos"],
-    // Pasa por el puente SSO firmado; `next=/` aterriza en el tablero de tesorería/deuda.
-    href: "/ir/reportes?next=%2F",
-    icon: (
-      <path d="M3 21h18M4 21V10m4 11V10m4 11V10m4 11V10m4 11V10M12 3 3.5 8h17L12 3Z" />
-    ),
-  },
-  {
-    ctag: "Finanzas",
-    title: "Reportería de Contabilidad",
-    desc: "Balance, estado de resultados y cuentas por pagar del grupo. Acceso por correo, validado con Microsoft Entra.",
-    tags: ["Balance", "EERR", "Cuentas por pagar"],
-    // App propia con su candado Entra (mismo tenant → SSO). Enlace directo.
-    href: "https://reporteria-contabilidad.vercel.app/",
-    icon: <path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h4" />,
-  },
-];
+export const dynamic = "force-dynamic"; // los permisos se leen en vivo
 
 const arrow = (
   <svg viewBox="0 0 24 24">
@@ -47,44 +11,21 @@ const arrow = (
   </svg>
 );
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: { error?: string };
+}) {
   const session = await auth();
   const name = session?.user?.name || "";
   const email = session?.user?.email || "";
+  const permiso = await permisoActual(email);
+  const visibles = INFORMES.filter((it) => permiso.informes.includes(it.id));
+  const sinPermiso = searchParams?.error === "sin-permiso";
 
   return (
     <>
-      <header className="topbar">
-        <div className="brand">
-          <span className="logo-tile">
-            <img src="/trei-logo.png" alt="Trei Inmobiliaria" />
-          </span>
-          <span className="div" />
-          <span className="sub">Control de Gestión</span>
-        </div>
-        <div className="userbox">
-          <svg className="msft" viewBox="0 0 21 21" aria-hidden="true">
-            <rect x="1" y="1" width="9" height="9" fill="#f25022" />
-            <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
-            <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
-            <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
-          </svg>
-          <span className="who">
-            {name ? <b>{name}</b> : null}
-            {email}
-          </span>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
-          >
-            <button className="salir" type="submit">
-              Salir
-            </button>
-          </form>
-        </div>
-      </header>
+      <Topbar name={name} email={email} admin={permiso.admin} activa="informes" />
 
       <main className="wrap">
         <p className="eyebrow">Portal de Informes</p>
@@ -93,13 +34,20 @@ export default async function Home() {
           Los tableros del área financiera de Trei. Selecciona a cuál entrar.
         </p>
 
+        {sinPermiso ? (
+          <div className="aviso">
+            No tienes acceso a ese informe. Si lo necesitas, pídelo a Control de
+            Gestión.
+          </div>
+        ) : null}
+
         <section className="grid">
-          {INFORMES.map((it) => {
+          {visibles.map((it) => {
             const external = it.href.startsWith("http");
             return (
               <a
                 className="card"
-                key={it.title}
+                key={it.id}
                 href={it.href}
                 {...(external
                   ? { target: "_blank", rel: "noopener noreferrer" }
@@ -120,6 +68,35 @@ export default async function Home() {
               </a>
             );
           })}
+
+          {permiso.admin ? (
+            <a className="card card-admin" href="/accesos">
+              <span className="ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6L12 3Z M9 12l2 2 4-4" />
+                </svg>
+              </span>
+              <p className="ctag">Administración</p>
+              <h2>Gestor de Accesos</h2>
+              <p className="desc">
+                Quién entra al portal y a qué informes. Altas, suspensiones y
+                permisos por informe, sin redeploy. Junto al Panel de Salud.
+              </p>
+              <ul className="tags">
+                <li>Usuarios</li>
+                <li>Permisos por informe</li>
+                <li>Bitácora</li>
+              </ul>
+              <span className="cta">Administrar {arrow}</span>
+            </a>
+          ) : null}
+
+          {visibles.length === 0 && !permiso.admin ? (
+            <div className="vacio">
+              Tu cuenta está activa pero aún no tiene informes asignados.
+              Escribe a Control de Gestión.
+            </div>
+          ) : null}
         </section>
 
         <footer>

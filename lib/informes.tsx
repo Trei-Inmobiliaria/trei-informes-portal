@@ -1,0 +1,77 @@
+// Catálogo de informes del portal. El `id` es la llave que usa el Gestor de
+// Accesos para decidir qué tarjetas ve cada persona.
+export type InformeId = "comercial" | "cobranza" | "tesoreria" | "contabilidad";
+
+export type Informe = {
+  id: InformeId;
+  ctag: string;
+  title: string;
+  corto: string;
+  desc: string;
+  tags: string[];
+  href: string;
+  // true = el portal puede bloquear el acceso (pasa por /ir/reportes).
+  // false = enlace externo con su propio candado: el portal solo oculta la tarjeta.
+  controlado: boolean;
+  icon: JSX.Element;
+};
+
+export const INFORMES: Informe[] = [
+  {
+    id: "comercial",
+    ctag: "Ventas & Leads",
+    title: "Informe Comercial",
+    corto: "Comercial",
+    desc: "Ventas, leads y estado comercial en tiempo real por proyecto.",
+    tags: ["Por proyecto", "Leads", "Reservas", "Se abre en trei.cl"],
+    // Vive en trei.cl con su propio Entra (mismo tenant → SSO, sin segunda clave).
+    href: "https://trei.cl/informe_ventas/",
+    controlado: false,
+    icon: <path d="M4 20V10M10 20V4M16 20V13M3 20h18" />,
+  },
+  {
+    id: "cobranza",
+    ctag: "Cartera de Clientes",
+    title: "Cobranza",
+    corto: "Cobranza",
+    desc: "Cartera por proyecto y conciliación de ingresos en vivo: recaudación del mes, bandejas por conciliar y Transbank/TOKU.",
+    tags: ["Por proyecto", "Conciliación", "Recaudación"],
+    // Pasa por el puente SSO firmado; `next` aterriza en la sección de cobranza.
+    href: "/ir/reportes?next=%2Fcobranza",
+    controlado: true,
+    icon: <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z M9 8h6 M9 12h6" />,
+  },
+  {
+    id: "tesoreria",
+    ctag: "Caja, Bancos & Deuda",
+    title: "Tesorería y Control de Deuda",
+    corto: "Tesorería",
+    desc: "Posición de caja por sociedad y conciliación bancaria, junto con la deuda financiera del grupo: créditos, acreedores, perfil de vencimientos y costo promedio ponderado (WACD).",
+    tags: ["Posición de caja", "Movimientos", "Créditos", "Acreedores", "Vencimientos"],
+    // Pasa por el puente SSO firmado; `next=/` aterriza en el tablero de tesorería/deuda.
+    href: "/ir/reportes?next=%2F",
+    controlado: true,
+    icon: (
+      <path d="M3 21h18M4 21V10m4 11V10m4 11V10m4 11V10m4 11V10M12 3 3.5 8h17L12 3Z" />
+    ),
+  },
+  {
+    id: "contabilidad",
+    ctag: "Finanzas",
+    title: "Reportería de Contabilidad",
+    corto: "Contabilidad",
+    desc: "Balance, estado de resultados y cuentas por pagar del grupo. Acceso por correo, validado con Microsoft Entra.",
+    tags: ["Balance", "EERR", "Cuentas por pagar"],
+    // App propia con su candado Entra (mismo tenant → SSO). Enlace directo.
+    href: "https://reporteria-contabilidad.vercel.app/",
+    controlado: false,
+    icon: <path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h4" />,
+  },
+];
+
+export const INFORME_IDS = INFORMES.map((i) => i.id);
+
+// A qué informe corresponde cada destino del puente /ir/reportes.
+export function informeDeRuta(next: string | null | undefined): InformeId {
+  return next && next.startsWith("/cobranza") ? "cobranza" : "tesoreria";
+}
