@@ -317,3 +317,102 @@ footer .sep{color:var(--borde-fuerte)}
 .savebar .salir{padding:8px 12px}
 
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- Tema "Panel de Salud" (solo /accesos) ----------
+   Mismo lenguaje visual que el Worker trei-panel-salud: fondo casi negro con
+   halos rojo/azul, tarjetas de vidrio, rojo de marca #E4172F y badges con brillo. */
+.tema-salud{
+  --rojo:#E4172F;
+  --negro:#f2f2f3;           /* en este tema "negro" es la tinta principal */
+  --tinta:#f2f2f3;
+  --fondo:#0e0e10;
+  --carta:#1c1c1fcc;
+  --borde:#3a3a3f;
+  --borde-fuerte:#4a4a50;
+  --gris:#a8a8ad;
+  --gris-claro:#8a8a8e;
+  --vidrio:0 1px 0 rgba(255,255,255,.07) inset,0 12px 32px -16px rgba(0,0,0,.6);
+  --sombra:var(--vidrio);
+  --sombra-alta:0 1px 0 rgba(255,255,255,.07) inset,0 18px 40px -14px rgba(0,0,0,.75);
+  --ok:#1a9d5a;
+  min-height:100vh;color:var(--tinta);color-scheme:dark;
+  font-family:-apple-system,'Segoe UI',Roboto,var(--ff);
+  background:
+    radial-gradient(ellipse 900px 500px at 12% -8%,rgba(228,23,47,.22),transparent 60%),
+    radial-gradient(ellipse 700px 500px at 90% 0%,rgba(90,120,255,.10),transparent 55%),
+    radial-gradient(ellipse 1000px 600px at 50% 110%,rgba(228,23,47,.08),transparent 60%),
+    var(--fondo);
+  background-attachment:fixed;
+}
+.tema-salud .topbar{background:#0b0b0dcc;border-bottom:1px solid var(--borde);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.tema-salud h1{color:var(--negro);text-shadow:0 0 28px rgba(228,23,47,.45)}
+
+/* Superficies de vidrio */
+.tema-salud .kpi,.tema-salud .cob,.tema-salud .matriz,.tema-salud .bitacora,.tema-salud .buscar{
+  background:var(--carta);border-color:var(--borde);border-radius:14px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:var(--vidrio);
+}
+.tema-salud .buscar{border-radius:9px}
+.tema-salud .kpi-v{color:#f0f0f1;text-shadow:0 0 28px rgba(228,23,47,.45)}
+.tema-salud .cob-ico{background:#00000055;border:1px solid var(--borde);color:var(--negro)}
+.tema-salud .cob-salud .cob-ico{background:var(--rojo);border-color:var(--rojo);color:#fff;box-shadow:0 0 14px rgba(228,23,47,.5)}
+.tema-salud .barra{background:#ffffff14}
+.tema-salud .barra span{box-shadow:0 0 10px rgba(228,23,47,.6)}
+
+/* Controles */
+.tema-salud .buscar:focus-within{border-color:var(--rojo)}
+.tema-salud .buscar input{color:var(--tinta)}
+.tema-salud .chip{background:#00000040;border-color:var(--borde);color:var(--gris)}
+.tema-salud .chip:hover{color:var(--tinta)}
+.tema-salud .chip.on{background:var(--rojo);border-color:var(--rojo);color:#fff;box-shadow:0 0 14px rgba(228,23,47,.45)}
+.tema-salud .btn-rojo{box-shadow:0 0 14px rgba(228,23,47,.35)}
+.tema-salud .salir{border-color:var(--borde);color:var(--gris)}
+.tema-salud .salir:hover{border-color:var(--rojo);color:#fff}
+
+/* Matriz */
+.tema-salud .fila{border-top-color:var(--borde)}
+.tema-salud .fila:not(.cab):hover{background:#ffffff08}
+.tema-salud .fila.cab{background:#00000033;color:var(--gris)}
+.tema-salud .col-inf{color:var(--gris)}
+.tema-salud .col-inf:hover:not(:disabled){background:#ffffff12;color:var(--tinta)}
+.tema-salud .fila.cambio{background:rgba(228,23,47,.08)}
+.tema-salud .avatar{background:#ffffff14;color:#c6c6cc}
+.tema-salud .avatar.admin{background:#d33a4b33;color:#ff8ea0;box-shadow:0 0 0 2px #1c1c1f,0 0 0 3.5px var(--rojo)}
+.tema-salud .nombre{color:var(--tinta)}
+.tema-salud .nombre:focus{background:#00000040;border-color:var(--rojo)}
+.tema-salud .yo{background:#5a78ff33;color:#a3b6ff}
+.tema-salud .fijo{background:#d33a4b33;color:#ff8ea0}
+.tema-salud .seg{background:#00000040;border-color:var(--borde)}
+.tema-salud .seg button{color:var(--gris)}
+.tema-salud .seg button.on{background:#ffffff1c;color:var(--tinta);box-shadow:0 1px 0 rgba(255,255,255,.07) inset}
+.tema-salud .perm{background:#00000040;border-color:var(--borde-fuerte);color:#fff}
+.tema-salud .perm:hover:not(:disabled){border-color:var(--rojo)}
+.tema-salud .perm.on{background:var(--rojo);border-color:var(--rojo);box-shadow:0 0 12px rgba(228,23,47,.5)}
+.tema-salud .switch{background:#3a3a3f}
+.tema-salud .switch span{background:#f2f2f3}
+.tema-salud .switch.on{background:var(--rojo)}
+.tema-salud .borrar:hover:not(:disabled){background:#d33a4b33;color:#ff8ea0}
+
+/* Avisos, bitácora y badges (paleta de estado del panel) */
+.tema-salud .aviso{background:#c98a1c22;border-color:#c98a1c66;color:#f3c77a}
+.tema-salud .aviso code{background:#00000055;color:#f3c77a}
+.tema-salud .aviso-info{background:#5a78ff1f;border-color:#5a78ff55;color:#a3b6ff}
+.tema-salud .bitacora li{border-top-color:var(--borde)}
+.tema-salud .tag-acc{background:#ffffff14;color:#c6c6cc;border-radius:999px}
+.tema-salud .acc-alta,.tema-salud .acc-reactivacion{background:var(--ok);color:#fff;box-shadow:0 0 12px #1a9d5a80}
+.tema-salud .acc-baja,.tema-salud .acc-suspension{background:#d33a4b;color:#fff;box-shadow:0 0 12px #d33a4b80}
+.tema-salud .acc-rol{background:#5a78ff33;color:#a3b6ff}
+.tema-salud .log-txt{color:var(--tinta)}
+
+/* Barra de guardado y modal */
+.tema-salud .savebar{background:#1c1c1fee;border:1px solid var(--borde);color:var(--tinta);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.tema-salud .savebar.err{background:#5a0d1bee;border-color:#d33a4b}
+.tema-salud .modal-fondo{background:#000000b0}
+.tema-salud .modal{background:#1c1c1f;border:1px solid var(--borde);box-shadow:var(--sombra-alta)}
+.tema-salud .modal label,.tema-salud .modal .lbl{color:var(--gris);font-size:10.5px;text-transform:uppercase;letter-spacing:.7px}
+.tema-salud .modal .opc,.tema-salud .modal .err{text-transform:none;letter-spacing:0}
+.tema-salud .modal input{background:#00000040;border-color:var(--borde);color:var(--tinta);text-transform:none;letter-spacing:0}
+.tema-salud .modal input:focus{border-color:var(--rojo)}
+.tema-salud .chk{background:#00000040;border-color:var(--borde);color:var(--gris);text-transform:none;letter-spacing:0}
+.tema-salud .chk.on{background:var(--rojo);border-color:var(--rojo);color:#fff}
+.tema-salud .modal-acc .salir{color:var(--gris);border-color:var(--borde)}

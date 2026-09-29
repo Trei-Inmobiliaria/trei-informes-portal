@@ -13,7 +13,7 @@ export default async function AccesosPage() {
   if (!permisoDe(accesos, email).admin) redirect("/");
 
   return (
-    <>
+    <div className="tema-salud">
       <Topbar name={session?.user?.name || ""} email={email} admin activa="accesos" />
       <main className="wrap wrap-ancho">
         <p className="eyebrow">Administración</p>
@@ -31,6 +31,6 @@ export default async function AccesosPage() {
           panelSaludUrl={PANEL_SALUD_URL}
         />
       </main>
-    </>
+    </div>
   );
 }
