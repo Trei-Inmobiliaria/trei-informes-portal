@@ -85,14 +85,21 @@ function semilla(): Accesos {
 // Vercel a veces crea la variable con otro nombre al conectar el Edge Config.
 const edgeConfigCs = () => process.env.EDGE_CONFIG || process.env.GLOBAL_CONFIG || "";
 
-function conexion(): { id: string; token: string } | null {
+// Edge Config pasó a llamarse Global Config: las conexiones nuevas usan
+// global-config.vercel.com y su API REST vive en /v1/global-config. Se usa la
+// misma familia que indique el connection string.
+type Conexion = { id: string; token: string; host: string; api: "global-config" | "edge-config" };
+
+function conexion(): Conexion | null {
   const cs = edgeConfigCs();
   if (!cs) return null;
   try {
     const u = new URL(cs);
+    if (!/^(edge|global)-config\.vercel\.com$/.test(u.hostname)) return null;
     const id = u.pathname.replace(/^\//, "");
     const token = u.searchParams.get("token") || "";
-    return id && token ? { id, token } : null;
+    const api = u.hostname.startsWith("global") ? "global-config" : "edge-config";
+    return id && token ? { id, token, host: u.hostname, api } : null;
   } catch {
     return null;
   }
@@ -112,7 +119,7 @@ export async function leerAccesos(
   if (!c) return { accesos: semilla(), origen: "semilla" };
   try {
     const r = await fetch(
-      `https://edge-config.vercel.com/${c.id}/item/${KEY}?token=${c.token}`,
+      `https://${c.host}/${c.id}/item/${KEY}?token=${c.token}`,
       { cache: "no-store" }
     );
     if (r.status === 404) {
@@ -141,7 +148,7 @@ export function faltasEscritura(): string[] {
   if (!edgeConfigCs()) faltas.push("No hay variable EDGE_CONFIG (ni GLOBAL_CONFIG) en este deploy.");
   else if (!conexion())
     faltas.push(
-      "EDGE_CONFIG existe pero no tiene el formato https://edge-config.vercel.com/ecfg_…?token=…"
+      "EDGE_CONFIG / GLOBAL_CONFIG existe pero no tiene el formato https://global-config.vercel.com/…?token=…"
     );
   if (!process.env.VERCEL_API_TOKEN) faltas.push("No hay variable VERCEL_API_TOKEN en este deploy.");
   return faltas;
@@ -152,11 +159,18 @@ export async function guardarAccesos(valor: Accesos): Promise<void> {
   const token = process.env.VERCEL_API_TOKEN;
   if (!c || !token) throw new Error("Edge Config no configurado para escritura");
   const team = process.env.VERCEL_TEAM_ID ? `?teamId=${process.env.VERCEL_TEAM_ID}` : "";
-  const r = await fetch(`https://api.vercel.com/v1/edge-config/${c.id}/items${team}`, {
-    method: "PATCH",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ items: [{ operation: "upsert", key: KEY, value: valor }] }),
-  });
+  const patch = (api: string) =>
+    fetch(`https://api.vercel.com/v1/${api}/${c.id}/items${team}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ items: [{ operation: "upsert", key: KEY, value: valor }] }),
+    });
+  let r = await patch(c.api);
+  // Por si la API de la otra familia es la que reconoce este store.
+  if (r.status === 404) {
+    const otra = await patch(c.api === "global-config" ? "edge-config" : "global-config");
+    if (otra.status !== 404) r = otra;
+  }
   if (!r.ok) {
     // Vercel responde { error: { code, message } }; nunca incluye el token.
     let detalle = "";
