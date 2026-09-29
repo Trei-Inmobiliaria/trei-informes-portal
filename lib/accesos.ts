@@ -154,38 +154,79 @@ export function faltasEscritura(): string[] {
   return faltas;
 }
 
+type Ubicacion = { id: string; api: string; qs: string };
+let ubicacion: Ubicacion | null = null;
+
+// Encuentra con qué API (global-config / edge-config) y qué equipo el token ve
+// este store. Prueba VERCEL_TEAM_ID, la cuenta personal y cada equipo del token.
+async function ubicarStore(c: Conexion, token: string): Promise<Ubicacion> {
+  if (ubicacion?.id === c.id) return ubicacion;
+  const auth = { Authorization: `Bearer ${token}` };
+  const equipos: { id: string; nombre: string }[] = [];
+  let errEquipos = "";
+  try {
+    const r = await fetch("https://api.vercel.com/v2/teams?limit=50", { headers: auth, cache: "no-store" });
+    if (r.ok) {
+      const j = await r.json();
+      for (const t of j?.teams || []) equipos.push({ id: t.id, nombre: t.name || t.slug || t.id });
+    } else errEquipos = `no se pudieron listar los equipos del token (${r.status})`;
+  } catch {
+    errEquipos = "no se pudieron listar los equipos del token";
+  }
+  const env = process.env.VERCEL_TEAM_ID || "";
+  const candidatos = Array.from(new Set([env, "", ...equipos.map((t) => t.id)]));
+  const apis = [c.api, c.api === "global-config" ? "edge-config" : "global-config"];
+  let noAutorizado = false;
+  for (const api of apis) {
+    for (const team of candidatos) {
+      const qs = team ? `?teamId=${encodeURIComponent(team)}` : "";
+      const r = await fetch(`https://api.vercel.com/v1/${api}/${c.id}${qs}`, { headers: auth, cache: "no-store" });
+      if (r.ok) {
+        if (team !== env)
+          console.warn(`[accesos] el store está en el equipo ${team || "(personal)"}, no en VERCEL_TEAM_ID`);
+        ubicacion = { id: c.id, api, qs };
+        return ubicacion;
+      }
+      if (r.status === 401 || r.status === 403) noAutorizado = true;
+    }
+  }
+  const vistos = equipos.length
+    ? equipos.map((t) => `${t.nombre} (${t.id})`).join(", ")
+    : errEquipos || "ninguno";
+  throw new Error(
+    [
+      `El token no encuentra el store ${c.id} en ningún equipo al que tiene acceso`,
+      `Equipos del token: ${vistos}`,
+      noAutorizado ? "Vercel rechazó el token en algún equipo (401/403)" : "",
+      "Crea el token con alcance en el equipo dueño del Global Config y vuelve a hacer Redeploy",
+    ]
+      .filter(Boolean)
+      .join(". ")
+  );
+}
+
 export async function guardarAccesos(valor: Accesos): Promise<void> {
   const c = conexion();
   const token = process.env.VERCEL_API_TOKEN;
   if (!c || !token) throw new Error("Edge Config no configurado para escritura");
-  const team = process.env.VERCEL_TEAM_ID ? `?teamId=${process.env.VERCEL_TEAM_ID}` : "";
-  const patch = (api: string) =>
-    fetch(`https://api.vercel.com/v1/${api}/${c.id}/items${team}`, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ items: [{ operation: "upsert", key: KEY, value: valor }] }),
-    });
-  let r = await patch(c.api);
-  // Por si la API de la otra familia es la que reconoce este store.
-  if (r.status === 404) {
-    const otra = await patch(c.api === "global-config" ? "edge-config" : "global-config");
-    if (otra.status !== 404) r = otra;
-  }
+  const u = await ubicarStore(c, token);
+  const r = await fetch(`https://api.vercel.com/v1/${u.api}/${c.id}/items${u.qs}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ items: [{ operation: "upsert", key: KEY, value: valor }] }),
+  });
   if (!r.ok) {
+    if (r.status === 404) ubicacion = null;
     // Vercel responde { error: { code, message } }; nunca incluye el token.
     let detalle = "";
     try {
       const j = await r.json();
       detalle = [j?.error?.code, j?.error?.message].filter(Boolean).join(": ");
     } catch {}
-    const pista =
-      r.status === 401 || r.status === 403
-        ? "El token (VERCEL_API_TOKEN) no es válido o no tiene acceso al equipo del Edge Config (revisa VERCEL_TEAM_ID y el alcance del token)."
-        : r.status === 404
-          ? "No se encontró el Edge Config con ese equipo: revisa que VERCEL_TEAM_ID sea el del equipo dueño del Edge Config."
-          : "";
     throw new Error(
-      [`Vercel respondió ${r.status}`, detalle.slice(0, 200), pista].filter(Boolean).join(". ")
+      [`Vercel respondió ${r.status} al guardar (${u.api}${u.qs ? ", " + u.qs.slice(1) : ", cuenta personal"})`, detalle.slice(0, 200)]
+        .filter(Boolean)
+        .join(". ")
     );
   }
   // Edge Config tarda unos segundos en propagar: esta instancia ve el cambio ya.
