@@ -1,25 +1,13 @@
 import NextAuth from "next-auth";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Lista de correos permitidos EN ESTE PORTAL (independiente del informe comercial).
-// Se puede sobreescribir con la variable de entorno ALLOWED_EMAILS (separados por
-// coma). El default es la lista acordada con Control de Gestión.
-// ─────────────────────────────────────────────────────────────────────────────
-const DEFAULT_ALLOW = [
-  "smendez@trei.cl",
-  "pelgueta@trei.cl",
-  "finanzas@trei.cl",
-  "nicole.jaramillo@ivcb.cl",
-  "pablo.macias@trei.cl",
-];
+import { permisoActual } from "@/lib/accesos";
 
-const ALLOWLIST = (process.env.ALLOWED_EMAILS
-  ? process.env.ALLOWED_EMAILS.split(",")
-  : DEFAULT_ALLOW
-)
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
+// ─────────────────────────────────────────────────────────────────────────────
+// Quién entra y a qué informes lo decide el Gestor de Accesos (/accesos), que
+// guarda la lista en Vercel Edge Config (ver lib/accesos.ts). Mientras Edge
+// Config esté vacío se usa la lista semilla (ALLOWED_EMAILS o la del código).
+// ─────────────────────────────────────────────────────────────────────────────
 
 // El UPN de un invitado B2B llega como
 // nombre_dominio.cl#EXT#@treicl.onmicrosoft.com
@@ -53,7 +41,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Filtro de acceso: solo los correos de la lista pueden entrar a ESTE portal.
     async signIn({ profile }) {
       const email = correoReal(profile);
-      return !!email && ALLOWLIST.includes(email);
+      return !!email && (await permisoActual(email)).permitido;
     },
     async jwt({ token, profile }) {
       if (profile) {
@@ -69,9 +57,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return session;
     },
-    // Gatea todas las rutas del middleware: sin sesión → a /login.
-    authorized({ auth }) {
-      return !!auth?.user;
+    // Gatea todas las rutas del middleware: sin sesión → a /login. Además
+    // revisa el permiso EN VIVO, así una suspensión en el gestor corta el acceso
+    // al instante aunque la sesión (JWT) siga vigente.
+    async authorized({ auth }) {
+      if (!auth?.user?.email) return false;
+      return (await permisoActual(auth.user.email)).permitido;
     },
   },
 });

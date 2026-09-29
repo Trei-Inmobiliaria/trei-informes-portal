@@ -1,6 +1,8 @@
 import { createHmac } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
+import { permisoActual } from "@/lib/accesos";
+import { informeDeRuta } from "@/lib/informes";
 
 // Puente SSO hacia la app de reportes (debt-control).
 // El usuario ya pasó por Microsoft en el portal (NextAuth). Al hacer clic en una
@@ -41,12 +43,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // Permiso por informe según el Gestor de Accesos (cobranza vs tesorería).
+  const next = request.nextUrl.searchParams.get("next") ?? undefined;
+  const permiso = await permisoActual(email);
+  if (!permiso.informes.includes(informeDeRuta(next))) {
+    return NextResponse.redirect(new URL("/?error=sin-permiso", request.url));
+  }
+
   const secret = process.env.PORTAL_SSO_SECRET;
   const base = process.env.REPORTES_URL;
   if (!secret || !base) {
     return NextResponse.redirect(new URL("/?error=sso-config", request.url));
   }
 
-  const next = request.nextUrl.searchParams.get("next") ?? undefined;
   return NextResponse.redirect(linkFirmado(email, secret, base, next));
 }
