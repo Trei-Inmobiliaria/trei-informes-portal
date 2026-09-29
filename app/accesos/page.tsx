@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { SUPER_ADMINS, leerAccesos, permisoDe, puedeEscribir } from "@/lib/accesos";
+import { SUPER_ADMINS, faltasEscritura, leerAccesos, permisoDe, puedeEscribir } from "@/lib/accesos";
 import Topbar, { PANEL_SALUD_URL } from "@/app/components/Topbar";
 import GestorAccesos from "./GestorAccesos";
 
@@ -26,6 +26,7 @@ export default async function AccesosPage() {
           inicial={accesos}
           origen={origen}
           escribible={puedeEscribir()}
+          faltas={faltasEscritura()}
           superAdmins={SUPER_ADMINS}
           yo={email}
           panelSaludUrl={PANEL_SALUD_URL}
