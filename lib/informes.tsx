@@ -5,7 +5,8 @@ export type InformeId =
   | "cobranza"
   | "tesoreria"
   | "contabilidad"
-  | "facturas-recibidas-2026";
+  | "facturas-recibidas-2026"
+  | "facturas-vcb";
 
 export type Informe = {
   id: InformeId;
@@ -84,9 +85,40 @@ export const INFORMES: Informe[] = [
     controlado: true,
     icon: <path d="M4 4h12l4 4v12H4zM14 4v6h6M8 14h8M8 18h5" />,
   },
+  {
+    id: "facturas-vcb",
+    ctag: "VCB Constructora",
+    title: "Facturas Recibidas 2026 — VCB Constructora",
+    corto: "Facturas VCB",
+    desc: "Facturas recibidas de VCB Constructora SpA: contabilización en Softland, pagos y saldo por documento. Corte 30-09-2026.",
+    tags: ["VCB Constructora", "Contabilización", "Pagos", "Exportar a Excel"],
+    // Mismo informe, solo con las filas de VCB embebidas en el HTML.
+    href: "/ir/facturas?v=vcb",
+    controlado: true,
+    icon: <path d="M4 4h12l4 4v12H4zM14 4v6h6M8 14h8M8 18h5" />,
+  },
 ];
 
 export const INFORME_IDS = INFORMES.map((i) => i.id);
+
+// ─── Dominios restringidos ──────────────────────────────────────────────────
+// Correos externos que solo pueden ver un subconjunto fijo de informes, sin
+// importar lo que se marque en el Gestor de Accesos, y que nunca son admin.
+// Se aplica al leer permisos (lib/accesos.ts) y al guardar (api/accesos).
+export const DOMINIOS_RESTRINGIDOS: Record<string, InformeId[]> = {
+  "razo.cl": ["facturas-vcb"],
+};
+
+export function informesPermitidos(email: string): InformeId[] | null {
+  const dominio = email.toLowerCase().split("@")[1] || "";
+  return DOMINIOS_RESTRINGIDOS[dominio] ?? null;
+}
+
+// Recorta la lista de informes de un correo restringido a lo que su dominio permite.
+export function recortarInformes(email: string, informes: InformeId[]): InformeId[] {
+  const permitidos = informesPermitidos(email);
+  return permitidos ? informes.filter((i) => permitidos.includes(i)) : informes;
+}
 
 // A qué informe corresponde cada destino del puente /ir/reportes.
 export function informeDeRuta(next: string | null | undefined): InformeId {

@@ -1,7 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { INFORMES, INFORME_IDS, type InformeId } from "@/lib/informes";
+import {
+  INFORMES,
+  INFORME_IDS,
+  informesPermitidos,
+  recortarInformes,
+  type InformeId,
+} from "@/lib/informes";
 import type { Accesos, Evento, Origen, Rol, Usuario } from "@/lib/accesos";
 
 type Filtro = "todos" | "activos" | "suspendidos" | "admins";
@@ -101,7 +107,10 @@ export default function GestorAccesos({
   const toggleInforme = (u: Usuario, id: InformeId) =>
     editar(u.email, (x) => ({
       ...x,
-      informes: x.informes.includes(id) ? x.informes.filter((i) => i !== id) : [...x.informes, id],
+      informes: recortarInformes(
+        x.email,
+        x.informes.includes(id) ? x.informes.filter((i) => i !== id) : [...x.informes, id]
+      ),
     }));
   const toggleColumna = (id: InformeId) => {
     const visibles = new Set(lista.map((u) => u.email));
@@ -112,9 +121,12 @@ export default function GestorAccesos({
           ? u
           : {
               ...u,
-              informes: todos
-                ? u.informes.filter((i) => i !== id)
-                : Array.from(new Set([...u.informes, id])),
+              informes: recortarInformes(
+                u.email,
+                todos
+                  ? u.informes.filter((i) => i !== id)
+                  : Array.from(new Set([...u.informes, id]))
+              ),
             }
       )
     );
@@ -490,7 +502,15 @@ function NuevoUsuario({
         onSubmit={(ev) => {
           ev.preventDefault();
           if (!e || error) return;
-          onCrear({ email: e, nombre: nombre.trim() || undefined, rol, activo: true, informes });
+          // Correos de dominios restringidos (razo.cl): solo sus informes fijos, rol usuario.
+          const fijos = informesPermitidos(e);
+          onCrear({
+            email: e,
+            nombre: nombre.trim() || undefined,
+            rol: fijos ? "usuario" : rol,
+            activo: true,
+            informes: fijos ? [...fijos] : informes,
+          });
         }}
       >
         <h3>Agregar persona</h3>
@@ -501,6 +521,15 @@ function NuevoUsuario({
           Correo
           <input autoFocus type="email" value={email} onChange={(x) => setEmail(x.target.value)} placeholder="nombre@trei.cl" />
           {error ? <span className="err">{error}</span> : null}
+          {!error && e && informesPermitidos(e) ? (
+            <span className="sub">
+              Correo externo: solo podrá ver{" "}
+              {informesPermitidos(e)!
+                .map((id) => INFORMES.find((it) => it.id === id)?.corto || id)
+                .join(", ")}
+              , sin rol de admin.
+            </span>
+          ) : null}
         </label>
         <label>
           Nombre <span className="opc">(opcional)</span>

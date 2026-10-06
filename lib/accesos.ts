@@ -1,4 +1,9 @@
-import { INFORME_IDS, type InformeId } from "@/lib/informes";
+import {
+  INFORME_IDS,
+  informesPermitidos,
+  recortarInformes,
+  type InformeId,
+} from "@/lib/informes";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Gestor de Accesos — almacenamiento en Vercel Edge Config.
@@ -281,6 +286,10 @@ export function permisoDe(accesos: Accesos, email: string | null | undefined): P
   if (SUPER_ADMINS.includes(e)) return { permitido: true, admin: true, informes: [...INFORME_IDS] };
   const u = accesos.usuarios.find((x) => x.email === e);
   if (!u || !u.activo) return { permitido: false, admin: false, informes: [] };
+  // Dominios restringidos (p. ej. razo.cl): solo sus informes fijos y nunca admin,
+  // aunque en Edge Config diga otra cosa.
+  if (informesPermitidos(e))
+    return { permitido: true, admin: false, informes: recortarInformes(e, u.informes) };
   return { permitido: true, admin: u.rol === "admin", informes: u.informes };
 }
 

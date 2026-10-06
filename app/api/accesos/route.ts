@@ -11,6 +11,7 @@ import {
   permisoDe,
   puedeEscribir,
 } from "@/lib/accesos";
+import { informesPermitidos, recortarInformes } from "@/lib/informes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,6 +66,11 @@ export async function PUT(request: NextRequest) {
     if (SUPER_ADMINS.includes(u.email)) {
       u.rol = "admin";
       u.activo = true;
+    }
+    // Dominios restringidos (razo.cl): solo sus informes fijos, nunca admin.
+    if (informesPermitidos(u.email)) {
+      u.rol = "usuario";
+      u.informes = recortarInformes(u.email, u.informes);
     }
   }
   const yo = nuevos.find((u) => u.email === a.email);
