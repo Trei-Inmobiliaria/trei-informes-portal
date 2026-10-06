@@ -8,11 +8,13 @@ import {
   recortarInformes,
   type InformeId,
 } from "@/lib/informes";
-import type { Accesos, Evento, Origen, Rol, Usuario } from "@/lib/accesos";
+import type { Accesos, Dominio, Evento, Origen, Rol, Usuario } from "@/lib/accesos";
 
 type Filtro = "todos" | "activos" | "suspendidos" | "admins";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DOMINIO_RE = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
+const limpiarDominio = (d: string) => d.trim().toLowerCase().replace(/^@+/, "");
 
 const ACCION: Record<Evento["accion"], string> = {
   alta: "Alta",
@@ -41,6 +43,7 @@ function hace(iso?: string) {
 
 const firma = (u: Usuario) =>
   JSON.stringify([u.nombre || "", u.rol, u.activo, [...u.informes].sort()]);
+const firmaDom = (d: Dominio) => JSON.stringify([d.activo, [...d.informes].sort()]);
 
 export default function GestorAccesos({
   inicial,
@@ -62,6 +65,8 @@ export default function GestorAccesos({
   const [guardado, setGuardado] = useState<Accesos>(inicial);
   const [origen, setOrigen] = useState<Origen>(origenInicial);
   const [usuarios, setUsuarios] = useState<Usuario[]>(inicial.usuarios);
+  const [dominios, setDominios] = useState<Dominio[]>(inicial.dominios || []);
+  const [nuevoDomAbierto, setNuevoDomAbierto] = useState(false);
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [nuevoAbierto, setNuevoAbierto] = useState(false);
@@ -78,6 +83,16 @@ export default function GestorAccesos({
     return set;
   }, [usuarios, guardado]);
 
+  const pendientesDom = useMemo(() => {
+    const antes = new Map((guardado.dominios || []).map((d) => [d.dominio, firmaDom(d)]));
+    const ahora = new Set(dominios.map((d) => d.dominio));
+    const set = new Set<string>();
+    for (const d of dominios) if (antes.get(d.dominio) !== firmaDom(d)) set.add(d.dominio);
+    for (const k of Array.from(antes.keys())) if (!ahora.has(k)) set.add(k);
+    return set;
+  }, [dominios, guardado]);
+  const nPend = pendientes.size + pendientesDom.size;
+
   // ─── KPIs ─────────────────────────────────────────────────────────────────
   const activos = usuarios.filter((u) => u.activo);
   const kpis = [
@@ -85,9 +100,13 @@ export default function GestorAccesos({
     { k: "Administradores", v: activos.filter((u) => u.rol === "admin").length, s: "gestionan esta vista" },
     { k: "Suspendidos", v: usuarios.length - activos.length, s: "sin acceso temporal" },
     {
-      k: "Dominios",
-      v: new Set(activos.map((u) => u.email.split("@")[1])).size,
-      s: Array.from(new Set(activos.map((u) => u.email.split("@")[1]))).join(" · "),
+      k: "Dominios habilitados",
+      v: dominios.filter((d) => d.activo).length,
+      s:
+        dominios
+          .filter((d) => d.activo)
+          .map((d) => "@" + d.dominio)
+          .join(" · ") || "ninguno: solo personas de la lista",
     },
   ];
 
@@ -139,12 +158,13 @@ export default function GestorAccesos({
       const r = await fetch("/api/accesos", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base: guardado.actualizado, usuarios }),
+        body: JSON.stringify({ base: guardado.actualizado, usuarios, dominios }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || `Error ${r.status}`);
       setGuardado(data.accesos);
       setUsuarios(data.accesos.usuarios);
+      setDominios(data.accesos.dominios || []);
       setOrigen("edge-config");
       setMsg({ tipo: "ok", texto: `Guardado · ${data.cambios} cambio(s) registrados en la bitácora.` });
     } catch (e: any) {
@@ -261,7 +281,12 @@ export default function GestorAccesos({
       </section>
 
       {/* ── Matriz persona × informe ── */}
-      <section className="matriz" role="table" aria-label="Permisos por persona e informe">
+      <section
+        className="matriz"
+        role="table"
+        aria-label="Permisos por persona e informe"
+        style={{ ["--n-inf" as any]: INFORMES.length }}
+      >
         <div className="fila cab" role="row">
           <span role="columnheader">Persona</span>
           <span role="columnheader">Rol</span>
@@ -392,6 +417,137 @@ export default function GestorAccesos({
         {lista.length === 0 ? <div className="vacio">Nadie coincide con el filtro.</div> : null}
       </section>
 
+      {/* ── Acceso por dominio ── */}
+      <section className="toolbar">
+        <div className="dom-titulo">
+          <h3>Acceso por dominio</h3>
+          <p>
+            Cualquier correo de estos dominios entra con los informes marcados, sin
+            agregarlo uno por uno. Nunca da rol de admin. Si la persona también está
+            en la lista de arriba, manda su fila (sirve para suspender a alguien puntual).
+          </p>
+        </div>
+        <button className="btn-rojo" onClick={() => setNuevoDomAbierto(true)} disabled={!escribible}>
+          + Agregar dominio
+        </button>
+      </section>
+
+      <section
+        className="matriz"
+        role="table"
+        aria-label="Permisos por dominio e informe"
+        style={{ ["--n-inf" as any]: INFORMES.length }}
+      >
+        <div className="fila cab" role="row">
+          <span role="columnheader">Dominio</span>
+          <span role="columnheader">Tipo</span>
+          {INFORMES.map((it) => (
+            <span key={it.id} role="columnheader" className="col-inf">
+              {it.corto}
+            </span>
+          ))}
+          <span role="columnheader">Acceso</span>
+          <span role="columnheader" aria-label="Acciones" />
+        </div>
+        {dominios.map((d) => {
+          const fijos = informesPermitidos("x@" + d.dominio);
+          const editarDom = (f: (x: Dominio) => Dominio) =>
+            setDominios((xs) => xs.map((x) => (x.dominio === d.dominio ? f(x) : x)));
+          return (
+            <div
+              key={d.dominio}
+              role="row"
+              className={["fila", d.activo ? "" : "susp", pendientesDom.has(d.dominio) ? "cambio" : ""].join(" ")}
+            >
+              <div className="persona" role="cell">
+                <span className="avatar">@</span>
+                <div className="pers-txt">
+                  <b className="dom-nombre">@{d.dominio}</b>
+                  <span className="email">
+                    {usuarios.filter((u) => u.email.endsWith("@" + d.dominio)).length} con fila propia
+                    {fijos ? <em className="fijo" title="Regla fija en lib/informes.tsx">restringido</em> : null}
+                  </span>
+                  {d.actualizado ? (
+                    <span className="meta">
+                      Editado {hace(d.actualizado)}
+                      {d.actualizadoPor ? ` por ${d.actualizadoPor.split("@")[0]}` : ""}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <div role="cell" className="celda-rol">
+                <span className="estado">Todo el dominio</span>
+              </div>
+              {INFORMES.map((it) => {
+                const on = d.informes.includes(it.id);
+                const vetado = !!fijos && !fijos.includes(it.id);
+                return (
+                  <div role="cell" className="celda-inf" key={it.id} data-label={it.corto}>
+                    <button
+                      className={on ? "perm on" : "perm"}
+                      aria-pressed={on}
+                      aria-label={`${it.corto} para @${d.dominio}`}
+                      title={vetado ? "Este dominio no puede tener este informe" : undefined}
+                      disabled={!escribible || vetado}
+                      onClick={() =>
+                        editarDom((x) => ({
+                          ...x,
+                          informes: on ? x.informes.filter((i) => i !== it.id) : [...x.informes, it.id],
+                        }))
+                      }
+                    >
+                      {on ? (
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="m5 12 5 5 9-10" />
+                        </svg>
+                      ) : null}
+                    </button>
+                  </div>
+                );
+              })}
+              <div role="cell" className="celda-acc" data-label="Acceso">
+                <button
+                  className={d.activo ? "switch on" : "switch"}
+                  role="switch"
+                  aria-checked={d.activo}
+                  aria-label={`Acceso de @${d.dominio}`}
+                  disabled={!escribible}
+                  onClick={() => editarDom((x) => ({ ...x, activo: !x.activo }))}
+                >
+                  <span />
+                </button>
+                <span className="estado">{d.activo ? "Activo" : "Suspendido"}</span>
+              </div>
+              <div role="cell" className="celda-del">
+                <button
+                  className="borrar"
+                  title="Quitar dominio"
+                  aria-label={`Quitar @${d.dominio}`}
+                  disabled={!escribible}
+                  onClick={() => {
+                    if (confirm(`¿Quitar el acceso por dominio de @${d.dominio}? Las personas con fila propia no se ven afectadas.`))
+                      setDominios((xs) => xs.filter((x) => x.dominio !== d.dominio));
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+        {dominios.length === 0 ? (
+          <div className="vacio">Sin dominios. Hoy solo entran las personas de la lista.</div>
+        ) : null}
+      </section>
+
+      <p className="nota">
+        Las personas externas (por ejemplo @razo.cl) igual deben poder iniciar sesión
+        con Microsoft en el tenant de Trei: invitadas en Entra ID como usuarios
+        externos (B2B). El dominio evita tener que darlas de alta aquí una por una.
+      </p>
+
       <p className="nota">
         <b>Comercial</b> y <b>Contabilidad</b> se abren en apps externas con su
         propio candado Entra: el portal oculta la tarjeta, pero el control
@@ -423,21 +579,27 @@ export default function GestorAccesos({
       </section>
 
       {/* ── Barra de guardado ── */}
-      {pendientes.size > 0 || msg ? (
+      {nPend > 0 || msg ? (
         <div className={`savebar ${msg?.tipo === "error" ? "err" : ""}`}>
           <span>
-            {msg && pendientes.size === 0
+            {msg && nPend === 0
               ? msg.texto
               : msg?.tipo === "error"
                 ? msg.texto
-                : `${pendientes.size} persona${pendientes.size === 1 ? "" : "s"} con cambios sin guardar`}
+                : [
+                    pendientes.size ? `${pendientes.size} persona${pendientes.size === 1 ? "" : "s"}` : "",
+                    pendientesDom.size ? `${pendientesDom.size} dominio${pendientesDom.size === 1 ? "" : "s"}` : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" y ") + " con cambios sin guardar"}
           </span>
-          {pendientes.size > 0 ? (
+          {nPend > 0 ? (
             <>
               <button
                 className="salir"
                 onClick={() => {
                   setUsuarios(guardado.usuarios);
+                  setDominios(guardado.dominios || []);
                   setMsg(null);
                 }}
                 disabled={guardando}
@@ -454,6 +616,17 @@ export default function GestorAccesos({
             </button>
           )}
         </div>
+      ) : null}
+
+      {nuevoDomAbierto ? (
+        <NuevoDominio
+          existentes={dominios.map((d) => d.dominio)}
+          onCerrar={() => setNuevoDomAbierto(false)}
+          onCrear={(d) => {
+            setDominios((xs) => [...xs, d]);
+            setNuevoDomAbierto(false);
+          }}
+        />
       ) : null}
 
       {nuevoAbierto ? (
@@ -568,6 +741,94 @@ function NuevoUsuario({
             Cancelar
           </button>
           <button type="submit" className="btn-rojo" disabled={!e || !!error}>
+            Agregar
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function NuevoDominio({
+  existentes,
+  onCerrar,
+  onCrear,
+}: {
+  existentes: string[];
+  onCerrar: () => void;
+  onCrear: (d: Dominio) => void;
+}) {
+  const [texto, setTexto] = useState("");
+  const d = limpiarDominio(texto);
+  const fijos = d ? informesPermitidos("x@" + d) : null;
+  // Por defecto ningún informe marcado: dar acceso a un dominio entero es una
+  // decisión que conviene tomar informe por informe. Los restringidos vienen fijos.
+  const [informes, setInformes] = useState<InformeId[]>([]);
+  const elegidos = fijos ? [...fijos] : informes;
+  const error = !d
+    ? ""
+    : d.includes("@")
+      ? "Escribe solo el dominio, sin la parte antes de @"
+      : !DOMINIO_RE.test(d)
+        ? "Dominio inválido (ej. razo.cl)"
+        : existentes.includes(d)
+          ? "Ese dominio ya está en la lista"
+          : "";
+
+  return (
+    <div className="modal-fondo" onClick={onCerrar}>
+      <form
+        className="modal"
+        onClick={(ev) => ev.stopPropagation()}
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          if (!d || error || !elegidos.length) return;
+          onCrear({ dominio: d, informes: elegidos, activo: true });
+        }}
+      >
+        <h3>Agregar dominio</h3>
+        <p className="sub">
+          Todos los correos de este dominio podrán entrar con los informes que marques,
+          sin rol de admin.
+        </p>
+        <label>
+          Dominio
+          <input autoFocus value={texto} onChange={(x) => setTexto(x.target.value)} placeholder="razo.cl" />
+          {error ? <span className="err">{error}</span> : null}
+          {!error && fijos ? (
+            <span className="sub">
+              Dominio restringido: solo puede ver{" "}
+              {fijos.map((id) => INFORMES.find((it) => it.id === id)?.corto || id).join(", ")}.
+            </span>
+          ) : null}
+        </label>
+        <span className="lbl">Informes</span>
+        <div className="checks">
+          {INFORMES.map((it) => {
+            const on = elegidos.includes(it.id);
+            const vetado = !!fijos && !fijos.includes(it.id);
+            return (
+              <button
+                type="button"
+                key={it.id}
+                className={on ? "chk on" : "chk"}
+                aria-pressed={on}
+                disabled={!!fijos || vetado}
+                onClick={() =>
+                  setInformes((xs) => (on ? xs.filter((i) => i !== it.id) : [...xs, it.id]))
+                }
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">{it.icon}</svg>
+                {it.corto}
+              </button>
+            );
+          })}
+        </div>
+        <div className="modal-acc">
+          <button type="button" className="salir" onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button type="submit" className="btn-rojo" disabled={!d || !!error || !elegidos.length}>
             Agregar
           </button>
         </div>

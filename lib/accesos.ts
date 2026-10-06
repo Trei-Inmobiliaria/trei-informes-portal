@@ -34,6 +34,21 @@ export type Usuario = {
   actualizadoPor?: string;
 };
 
+// Acceso por dominio: cualquier correo @dominio entra con estos informes, sin
+// darlo de alta uno por uno. Nunca da rol admin. Si la persona también está en
+// `usuarios`, manda su fila (así se puede suspender a alguien puntual).
+export type Dominio = {
+  dominio: string; // sin "@", en minúsculas: "razo.cl"
+  informes: InformeId[];
+  activo: boolean;
+  actualizado?: string;
+  actualizadoPor?: string;
+};
+
+export const DOMINIO_RE = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
+
+export const limpiarDominio = (d: string) => d.trim().toLowerCase().replace(/^@+/, "");
+
 export type Evento = {
   ts: string;
   por: string;
@@ -46,6 +61,7 @@ export type Accesos = {
   version: number;
   actualizado: string;
   usuarios: Usuario[];
+  dominios: Dominio[];
   log: Evento[];
 };
 
@@ -84,6 +100,7 @@ function semilla(): Accesos {
       activo: true,
       informes: [...INFORME_IDS],
     })),
+    dominios: [],
     log: [],
   };
 }
@@ -272,6 +289,18 @@ export function normalizar(raw: any): Accesos {
         actualizado: u.actualizado,
         actualizadoPor: u.actualizadoPor,
       })),
+    dominios: (Array.isArray(raw?.dominios) ? raw.dominios : [])
+      .filter((d: any) => d && typeof d.dominio === "string")
+      .map((d: any) => ({
+        dominio: limpiarDominio(d.dominio),
+        informes: (Array.isArray(d.informes) ? d.informes : []).filter((i: any) =>
+          INFORME_IDS.includes(i)
+        ),
+        activo: d.activo !== false,
+        actualizado: d.actualizado,
+        actualizadoPor: d.actualizadoPor,
+      }))
+      .filter((d: Dominio) => DOMINIO_RE.test(d.dominio)),
     log: Array.isArray(raw?.log) ? raw.log.slice(0, LOG_MAX) : [],
   };
 }
@@ -285,7 +314,17 @@ export function permisoDe(accesos: Accesos, email: string | null | undefined): P
   if (!e) return { permitido: false, admin: false, informes: [] };
   if (SUPER_ADMINS.includes(e)) return { permitido: true, admin: true, informes: [...INFORME_IDS] };
   const u = accesos.usuarios.find((x) => x.email === e);
-  if (!u || !u.activo) return { permitido: false, admin: false, informes: [] };
+  // Sin fila propia: puede entrar por su dominio (nunca como admin). Una fila
+  // propia —aunque esté suspendida— siempre manda sobre el dominio.
+  if (!u) {
+    const dom = e.split("@")[1] || "";
+    const d = (accesos.dominios || []).find((x) => x.dominio === dom && x.activo);
+    const informes = d ? recortarInformes(e, d.informes) : [];
+    return informes.length
+      ? { permitido: true, admin: false, informes }
+      : { permitido: false, admin: false, informes: [] };
+  }
+  if (!u.activo) return { permitido: false, admin: false, informes: [] };
   // Dominios restringidos (p. ej. razo.cl): solo sus informes fijos y nunca admin,
   // aunque en Edge Config diga otra cosa.
   if (informesPermitidos(e))
@@ -325,6 +364,34 @@ export function diferencias(antes: Usuario[], despues: Usuario[], por: string): 
       ev.push({ ts, por, accion: "datos", email: d.email, detalle: d.nombre || "" });
   }
   for (const a of antes) if (!mapD.has(a.email)) ev.push({ ts, por, accion: "baja", email: a.email });
+  return ev;
+}
+
+// Bitácora de dominios: mismas acciones que las personas, con "@dominio" como sujeto.
+export function diferenciasDominios(antes: Dominio[], despues: Dominio[], por: string): Evento[] {
+  const ts = new Date().toISOString();
+  const ev: Evento[] = [];
+  const mapA = new Map(antes.map((d) => [d.dominio, d]));
+  const mapD = new Map(despues.map((d) => [d.dominio, d]));
+  for (const d of despues) {
+    const sujeto = "@" + d.dominio;
+    const a = mapA.get(d.dominio);
+    if (!a) {
+      ev.push({ ts, por, accion: "alta", email: sujeto, detalle: "dominio · " + (d.informes.join(", ") || "sin informes") });
+      continue;
+    }
+    if (a.activo !== d.activo)
+      ev.push({ ts, por, accion: d.activo ? "reactivacion" : "suspension", email: sujeto });
+    const mas = d.informes.filter((i) => !a.informes.includes(i));
+    const menos = a.informes.filter((i) => !d.informes.includes(i));
+    if (mas.length || menos.length)
+      ev.push({
+        ts, por, accion: "permisos", email: sujeto,
+        detalle: [...mas.map((i) => "+" + i), ...menos.map((i) => "−" + i)].join(" "),
+      });
+  }
+  for (const a of antes)
+    if (!mapD.has(a.dominio)) ev.push({ ts, por, accion: "baja", email: "@" + a.dominio });
   return ev;
 }
 

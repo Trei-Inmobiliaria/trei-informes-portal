@@ -1,10 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
 import {
+  DOMINIO_RE,
   EMAIL_RE,
   LOG_LIMITE,
   SUPER_ADMINS,
   diferencias,
+  diferenciasDominios,
   guardarAccesos,
   leerAccesos,
   normalizar,
@@ -80,7 +82,31 @@ export async function PUT(request: NextRequest) {
       { status: 400 }
     );
 
-  const eventos = diferencias(a.accesos.usuarios, nuevos, a.email);
+  // Dominios: si el cliente no los manda (versión anterior de la página), se
+  // conservan los guardados en vez de borrarlos.
+  const dominios = Array.isArray(body.dominios)
+    ? normalizar({ dominios: body.dominios }).dominios
+    : a.accesos.dominios.map((d) => ({ ...d }));
+  if (Array.isArray(body.dominios)) {
+    const crudos = body.dominios.length;
+    if (dominios.length !== crudos)
+      return NextResponse.json({ error: "Hay un dominio inválido (ej. válido: razo.cl)." }, { status: 400 });
+  }
+  const vistosDom = new Set<string>();
+  for (const d of dominios) {
+    if (!DOMINIO_RE.test(d.dominio))
+      return NextResponse.json({ error: `Dominio inválido: ${d.dominio}` }, { status: 400 });
+    if (vistosDom.has(d.dominio))
+      return NextResponse.json({ error: `Dominio repetido: ${d.dominio}` }, { status: 400 });
+    vistosDom.add(d.dominio);
+    // Dominios restringidos (razo.cl): solo sus informes fijos.
+    d.informes = recortarInformes("x@" + d.dominio, d.informes);
+  }
+
+  const eventos = [
+    ...diferencias(a.accesos.usuarios, nuevos, a.email),
+    ...diferenciasDominios(a.accesos.dominios, dominios, a.email),
+  ];
   const ahora = new Date().toISOString();
   const tocados = new Set(eventos.map((e) => e.email));
   for (const u of nuevos) {
@@ -94,10 +120,22 @@ export async function PUT(request: NextRequest) {
     }
   }
 
+  for (const d of dominios) {
+    const previo = a.accesos.dominios.find((x) => x.dominio === d.dominio);
+    if (tocados.has("@" + d.dominio)) {
+      d.actualizado = ahora;
+      d.actualizadoPor = a.email;
+    } else if (previo) {
+      d.actualizado = previo.actualizado;
+      d.actualizadoPor = previo.actualizadoPor;
+    }
+  }
+
   const valor = {
     version: a.accesos.version + 1,
     actualizado: ahora,
     usuarios: nuevos.sort((x, y) => x.email.localeCompare(y.email)),
+    dominios: dominios.sort((x, y) => x.dominio.localeCompare(y.dominio)),
     log: [...eventos.reverse(), ...a.accesos.log].slice(0, LOG_LIMITE),
   };
 

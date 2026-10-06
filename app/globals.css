@@ -221,10 +221,10 @@ footer .sep{color:var(--borde-fuerte)}
 .btn-rojo:hover:not(:disabled){filter:brightness(1.08)}
 .btn-rojo:disabled{opacity:.45;cursor:not-allowed}
 
-.matriz{margin-top:14px;background:var(--carta);border:1px solid var(--borde);border-radius:12px;box-shadow:var(--sombra);overflow:hidden}
+.matriz{margin-top:14px;background:var(--carta);border:1px solid var(--borde);border-radius:12px;box-shadow:var(--sombra);overflow-x:auto}
 .fila{
   display:grid;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--borde);
-  grid-template-columns:minmax(230px,2.4fr) 150px repeat(4,minmax(78px,1fr)) 120px 40px;
+  grid-template-columns:minmax(230px,2.4fr) 150px repeat(var(--n-inf,4),minmax(78px,1fr)) 120px 40px;
   position:relative;transition:background .15s;
 }
 .fila.cab{border-top:0;background:#fafafb;padding-top:10px;padding-bottom:10px;font-size:10.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--gris-claro)}
@@ -417,3 +417,12 @@ footer .sep{color:var(--borde-fuerte)}
 .tema-salud .chk{background:#00000040;border-color:var(--borde);color:var(--gris);text-transform:none;letter-spacing:0}
 .tema-salud .chk.on{background:var(--rojo);border-color:var(--rojo);color:#fff}
 .tema-salud .modal-acc .salir{color:var(--gris);border-color:var(--borde)}
+
+/* Acceso por dominio */
+.dom-titulo{flex:1;min-width:260px}
+.dom-titulo h3{margin:0;font-size:15px;color:var(--negro)}
+.dom-titulo p{margin:4px 0 0;font-size:12.5px;color:var(--gris);max-width:80ch;line-height:1.5}
+.dom-nombre{font-size:13.5px;color:var(--negro)}
+.tema-salud .dom-titulo h3,.tema-salud .dom-nombre{color:var(--tinta)}
+.chk:disabled{cursor:not-allowed;opacity:.55}
+.chk.on:disabled{opacity:1}
