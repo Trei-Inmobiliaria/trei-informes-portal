@@ -1,6 +1,11 @@
 // Catálogo de informes del portal. El `id` es la llave que usa el Gestor de
 // Accesos para decidir qué tarjetas ve cada persona.
-export type InformeId = "comercial" | "cobranza" | "tesoreria" | "contabilidad";
+export type InformeId =
+  | "comercial"
+  | "cobranza"
+  | "tesoreria"
+  | "contabilidad"
+  | "facturas-recibidas-2026";
 
 export type Informe = {
   id: InformeId;
@@ -66,6 +71,18 @@ export const INFORMES: Informe[] = [
     href: "https://reporteria-contabilidad.vercel.app/",
     controlado: false,
     icon: <path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h4" />,
+  },
+  {
+    id: "facturas-recibidas-2026",
+    ctag: "Finanzas",
+    title: "Facturas Recibidas 2026",
+    corto: "Facturas 2026",
+    desc: "Cruce IConstruye ↔ Softland: DTE recibidos, estado de contabilización, pagos (egreso, factoring, traspaso) y saldo por documento. Corte 30-09-2026.",
+    tags: ["IConstruye", "Softland", "Contabilización", "Pagos", "Factoring"],
+    // Archivo HTML en /public, servido tras validar permiso por /ir/facturas.
+    href: "/ir/facturas",
+    controlado: true,
+    icon: <path d="M4 4h12l4 4v12H4zM14 4v6h6M8 14h8M8 18h5" />,
   },
 ];
 
