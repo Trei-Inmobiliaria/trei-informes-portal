@@ -15,12 +15,12 @@
 *{box-sizing:border-box}
 body{background:var(--fondo);color:var(--negro);font:400 13px/1.45 var(--f)}
 .topbar{background:var(--negro);color:var(--blanco);padding-inline:20px;padding-block:14px;border-bottom:3px solid var(--rojo)}
-.topbar .in{max-width:1280px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px}
+.topbar .in{max-width:1440px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px}
 .brand{font:700 10px var(--f);letter-spacing:1.4px;text-transform:uppercase;color:var(--rojo)}
 h1{font:700 16px/1.2 var(--f);margin:6px 0 0;letter-spacing:.5px;text-transform:uppercase;text-wrap:balance}
 .meta{font:400 11px/1.5 var(--f);color:#bbb;text-align:right}
-.wrap{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:24px 48px;display:grid;gap:24px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.wrap{max-width:1440px;margin:0 auto;padding-inline:20px;padding-block:24px 48px;display:grid;gap:24px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 .kpi{background:var(--blanco);border:1.5px solid var(--borde);border-left:4px solid var(--c,var(--negro));border-radius:8px;padding:14px 16px;display:grid;gap:4px}
 .kpi .lb{font:700 10px var(--f);letter-spacing:.8px;text-transform:uppercase;color:var(--t4)}
 .kpi b{font:700 28px/1.1 var(--f);font-variant-numeric:tabular-nums}
@@ -53,25 +53,34 @@ h1{font:700 16px/1.2 var(--f);margin:6px 0 0;letter-spacing:.5px;text-transform:
 .tab{font:700 11px var(--f);letter-spacing:.8px;text-transform:uppercase;background:none;border:0;border-bottom:3px solid transparent;color:var(--t4);padding:9px 12px;cursor:pointer}
 .tab.on{color:var(--rojo);border-color:var(--rojo)}
 .tblwrap{overflow-x:auto;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
-table{border-collapse:collapse;width:100%;min-width:980px;background:var(--blanco)}
-th{font:700 10px var(--f);letter-spacing:.8px;text-transform:uppercase;color:var(--blanco);background:var(--negro);text-align:right;padding:9px 8px;white-space:nowrap;cursor:pointer;user-select:none}
+table{border-collapse:collapse;width:100%;table-layout:fixed;background:var(--blanco)}
+th{font:700 10px var(--f);letter-spacing:.8px;text-transform:uppercase;color:var(--blanco);background:var(--negro);text-align:right;padding:9px 8px;line-height:1.25;cursor:pointer;user-select:none;vertical-align:bottom}
 th:first-child,th.l{text-align:left}
-td{padding:8px;border-bottom:1px solid var(--linea);vertical-align:top;font-size:12.5px}
+td{padding:8px;border-bottom:1px solid var(--linea);vertical-align:top;font-size:12.5px;overflow-wrap:anywhere}
 td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 tr.tot td{border-top:2px solid var(--negro);background:#f2f2f3;font-weight:700}
 tr.oc{cursor:pointer}
 tr.oc:hover td{background:var(--hover)}
 tr.oc.open td{background:var(--rosa)}
 tr.oc.open td:first-child{box-shadow:inset 3px 0 0 var(--rojo)}
-.ocn{font-weight:700;white-space:nowrap}
+.ocn{font-weight:700}
 .sub{font-size:11px;color:var(--t4)}
-.pill{display:inline-block;font:700 10px/1 var(--f);letter-spacing:.5px;text-transform:uppercase;padding:4px 7px;border-radius:4px;white-space:nowrap}
+.pill{display:inline-block;font:700 10px/1.2 var(--f);letter-spacing:.4px;text-transform:uppercase;padding:4px 6px;border-radius:4px}
 .p-ok{color:var(--ok);background:var(--ok-bg)}.p-warn{color:var(--warn);background:var(--warn-bg)}.p-bad{color:var(--bad);background:var(--bad-bg)}.p-neu{color:var(--neu);background:#eee}
 tr.det td{background:#fbfbfc;padding:14px 18px 18px}
 .detgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 24px;margin-bottom:12px}
 .detgrid div span{display:block;font:700 10px var(--f);letter-spacing:.8px;text-transform:uppercase;color:var(--t4)}
 .eyebrow{font:700 10px var(--f);letter-spacing:.8px;text-transform:uppercase;color:var(--t4)}
-.lines{min-width:760px}
+.toggle{font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.panel.collapsed h2{margin-bottom:0;padding-bottom:0;border-bottom:0}
+.btn-ghost{font:600 11px var(--f);border:1px solid #d8d8d8;background:var(--blanco);color:var(--t3);border-radius:6px;padding:9px 12px;cursor:pointer}
+.btn-ghost:hover{border-color:var(--rojo);color:var(--rojo)}
+.controls{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.controls input{grid-column:span 4;order:1;width:100%}
+.controls #clearBtn{order:2}.controls .btn-export{order:3;justify-content:center}
+.controls select{order:4;width:100%}
+@media (max-width:900px){.controls{grid-template-columns:1fr 1fr}.controls input{grid-column:1/-1}}
+@media (max-width:900px){table{table-layout:auto;min-width:900px}}
 .lines th{cursor:default;background:#333}
 .flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .flow .step{background:var(--blanco);border:1.5px solid var(--borde);border-radius:6px;padding:3px 8px;font-size:12px}
@@ -110,25 +119,26 @@ td.neg{color:var(--bad)}
   <div class="fresh" id="fresh"></div>
   <section class="kpis" id="kpis" aria-live="polite"></section>
 
-  <section class="panel" id="panelRs">
-    <h2>Recibido vs contabilizado por razón social <small id="rsHint">Toca una fila para filtrar</small></h2>
-    <div class="legend" style="margin-bottom:10px"><span><i style="background:#111"></i>Contabilizado en Softland</span><span><i style="background:#f0b429"></i>Pendiente de contabilizar</span><span><i style="background:#D9D9D9"></i>Sin empresa en Softland / provisoria</span></div>
-    <div class="bars" id="bars"></div>
+  <section class="panel collapsed" id="panelRs">
+    <h2><button id="rsToggle" class="toggle" aria-expanded="false" aria-controls="rsBody">▸ Recibido vs contabilizado por razón social</button><small id="rsHint"></small></h2>
+    <div id="rsBody" hidden>
+      <div class="legend" style="margin-bottom:10px"><span><i style="background:#111"></i>Contabilizado en Softland</span><span><i style="background:#f0b429"></i>Pendiente de contabilizar</span><span><i style="background:#D9D9D9"></i>Sin empresa en Softland / provisoria / rechazada</span></div>
+      <div class="bars" id="bars"></div>
+    </div>
   </section>
 
   <section class="panel">
-    <div class="controls" style="margin-bottom:12px">
+    <div class="controls" style="margin-bottom:14px">
       <input id="q" type="search" placeholder="Buscar folio, proveedor, RUT, obra, cuenta, comprobante…" aria-label="Buscar">
       <select id="mes" aria-label="Mes de emisión"></select>
       <select id="rs" aria-label="Razón social"></select>
-      <select id="tp" aria-label="Tipo de documento"></select>
-      <select id="psf" aria-label="Estado de pago Softland"></select>
-      <select id="pic" aria-label="Estado de pago IConstruye"></select>
       <select id="sii" aria-label="Estado SII"></select>
       <select id="eis" aria-label="Estado IConstruye"></select>
+      <select id="cf" aria-label="Contabilización Softland"></select>
+      <select id="psf" aria-label="Pago Softland"></select>
+      <button id="clearBtn" class="btn-ghost" hidden>Limpiar filtros</button>
       <button id="exportBtn" class="btn-export" title="Exporta la vista filtrada actual a Excel">↓ Exportar a Excel</button>
     </div>
-    <div class="chips" id="chips" style="margin-bottom:14px"></div>
     <div class="tabs" role="tablist">
       <button class="tab on" data-v="doc" role="tab" id="tab-doc">Documentos</button>
       <button class="tab" data-v="mes" role="tab" id="tab-mes">Por mes</button>
@@ -182,19 +192,19 @@ DATA.forEach(o=>{o.mes=o.fe?o.fe.slice(0,7):'';o.age=o.sf==='Pendiente de contab
 
 if(SCOPE){ document.getElementById('panelRs').style.display='none'; }
 
-const PS=['Rechazada en SII','Pagada (egreso)','Pagada a factoring','Pagada sin referencia','Cancelada por traspaso','Pago parcial','En Proveedores','En Factoring','Sin contabilizar','Nota de crédito'];
+const PS=['Pagada (egreso)','Pagada a factoring','Pagada sin referencia','Cancelada por traspaso','Pago parcial','En Proveedores','En Factoring','Sin contabilizar','Nota de crédito'];
 const PIC=['Totalmente Pagado','Parcialmente Pagado','Sin Pago'];
 const psPill=s=>s==='Rechazada en SII'?'p-bad':s.startsWith('Pagada')||s.startsWith('Cancelada')?'p-ok':s==='Pago parcial'||s==='En Factoring'?'p-warn':s==='En Proveedores'?'p-bad':'p-neu';
 const isPaidSF=s=>s.startsWith('Pagada')||s.startsWith('Cancelada');
 const porPagar=s=>s==='En Proveedores'||s==='Pago parcial'||s==='En Factoring';
 const difPago=o=>o.pago&&((o.pago==='Totalmente Pagado'&&porPagar(o.ps))||(o.pago==='Sin Pago'&&isPaidSF(o.ps)));
-const st={psf:'',pic:'',sii:'',eis:'',mes:'',rs:'',tp:'',sf:new Set(SF),q:'',view:'doc',sort:'fe',dir:-1,open:new Set(),page:0};
+const st={psf:'',sii:'',eis:'',cf:'',mes:'',rs:'',rsOpen:false,q:'',view:'doc',sort:'fe',dir:-1,open:new Set(),page:0};
 const PAGE=50;
 const key=o=>o.rut+'|'+o.t+'|'+o.fo+'|'+o.rs;
 
 function filtered(ignoreRs){
   const q=st.q.trim().toLowerCase();
-  return DATA.filter(o=>(!st.mes||o.mes===st.mes)&&(ignoreRs||!st.rs||o.rs===st.rs)&&(!st.tp||o.t===st.tp)&&(!st.psf||o.ps===st.psf)&&(!st.sii||o.sii===st.sii)&&(!st.eis||o.eics===st.eis)&&(!st.pic||(st.pic==='__none'?!o.pago:st.pic==='__dif'?difPago(o):o.pago===st.pic))&&st.sf.has(o.sf)&&(!q||q.split(/\s+/).every(t=>o.hay.includes(t))));
+  return DATA.filter(o=>(!st.mes||o.mes===st.mes)&&(ignoreRs||!st.rs||o.rs===st.rs)&&(!st.psf||o.ps===st.psf)&&(!st.sii||o.sii===st.sii)&&(!st.eis||o.eics===st.eis)&&(!st.cf||o.sf===st.cf)&&(!q||q.split(/\s+/).every(t=>o.hay.includes(t))));
 }
 function renderKpis(rows){
   const tot=rows.reduce((a,o)=>a+o.tot,0);
@@ -205,18 +215,14 @@ function renderKpis(rows){
   const sfac=pfac.reduce((a,o)=>a+(o.saldo||0),0);
   const sp=pp.reduce((a,o)=>a+(o.saldo||0),0), venc=pp.filter(o=>o.fv&&o.fv<HOYS).length;
   const rj=rows.filter(o=>o.sii==='Rechazada'), rjt=rj.reduce((a,o)=>a+Math.abs(o.tot),0);
-  const lag=c.filter(o=>o.lag!=null).map(o=>o.lag).sort((a,b)=>a-b); const med=lag.length?lag[Math.floor(lag.length/2)]:null;
+  const pct=n=>rows.length?Math.round(n/rows.length*100):0;
   document.getElementById('kpis').innerHTML=[
-    [rows.length.toLocaleString('es-CL'),'Documentos recibidos',st.mes?mesNom(st.mes):'Ene–'+MES_CORTO+' '+ANIO,'#111111'],
-    [fmtM(tot),'Monto total recibido','MM$ CLP con IVA','#111111'],
-    [c.length.toLocaleString('es-CL'),'Contabilizados','MM$ '+fmtM(ct)+' · '+(rows.length?Math.round(c.length/rows.length*100):0)+'% de los documentos','#00B050'],
-    [p.length,'Pendientes de contabilizar','MM$ '+fmtM(pt),'#f0b429'],
-    [old,'Pendientes > 15 días','desde la emisión','#E1093F'],
+    [rows.length.toLocaleString('es-CL'),'Documentos recibidos','MM$ '+fmtM(tot)+' con IVA · '+(st.mes?mesNom(st.mes):'Ene–'+MES_CORTO+' '+ANIO),'#111111'],
+    [c.length.toLocaleString('es-CL'),'Contabilizados',pct(c.length)+'% · MM$ '+fmtM(ct),'#00B050'],
+    [p.length,'Pendientes de contabilizar','MM$ '+fmtM(pt)+' · '+old+' con más de 15 días','#f0b429'],
     [rj.length,'Rechazadas en SII','MM$ '+fmtM(rjt)+' · regla de aceptación','#E1093F'],
-    [pg.length.toLocaleString('es-CL'),'Pagadas en Softland','egreso, factoring, traspaso o saldo auxiliar','#006400'],
-    [fmtM(sp),'Por pagar en Proveedores','MM$ · '+pp.length+' documentos · '+venc+' vencidos','#E1093F'],
-    [fmtM(sfac),'Por pagar en Factoring','MM$ · '+pfac.length+' facturas cedidas','#f0b429'],
-    [med==null?'—':med,'Días a contabilizar','mediana emisión → comprobante','#D9D9D9']
+    [fmtM(sp+sfac),'Por pagar (MM$)',(pp.length+pfac.length)+' documentos · '+venc+' vencidos · Factoring MM$ '+fmtM(sfac),'#E1093F'],
+    [pg.length.toLocaleString('es-CL'),'Pagadas en Softland',pct(pg.length)+'% de los documentos','#006400']
   ].map(([b,s,u,col])=>`<div class="kpi" style="--c:${col}"><span class="lb">${s}</span><b>${b}</b><span class="un">${u}</span></div>`).join('');
 }
 function renderBars(){
@@ -226,7 +232,8 @@ function renderBars(){
     if(o.sf==='Contabilizada'){x.a+=Math.abs(o.tot);x.na++} else if(o.sf==='Pendiente de contabilizar') x.b+=Math.abs(o.tot); else x.c+=Math.abs(o.tot)});
   const arr=Object.entries(m).sort((a,b)=>(b[1].a+b[1].b+b[1].c)-(a[1].a+a[1].b+a[1].c)); const max=Math.max(1,...arr.map(([k,x])=>x.a+x.b+x.c));
   document.getElementById('bars').innerHTML=arr.length?arr.map(([k,x])=>{const t=x.a+x.b+x.c;return `<button class="barrow${st.rs===k?' on':''}" data-rs="${esc(k)}" aria-pressed="${st.rs===k}"><span class="nm" title="${esc(k)}">${esc(k)}</span><span class="stack" style="width:${(t/max*100).toFixed(1)}%"><span class="a" style="width:${(x.a/t*100).toFixed(1)}%"></span><span class="b" style="width:${(x.b/t*100).toFixed(1)}%"></span><span class="c" style="width:${(x.c/t*100).toFixed(1)}%"></span></span><span class="val"><em>${x.na}/${x.n}</em> contab. · $ ${fmtM(t)} M</span></button>`}).join(''):'<div class="empty">Sin documentos para los filtros actuales</div>';
-  document.getElementById('rsHint').textContent=st.rs?'Toca de nuevo para quitar el filtro':'Toca una fila para filtrar';
+  const tot=arr.reduce((a,[k,x])=>a+x.n,0), cn=arr.reduce((a,[k,x])=>a+x.na,0);
+  document.getElementById('rsHint').textContent=st.rsOpen?(st.rs?'Toca de nuevo la fila para quitar el filtro':'Toca una fila para filtrar'):(arr.length+' razones sociales · '+(tot?Math.round(cn/tot*100):0)+'% contabilizado'+(st.rs?' · filtrado: '+st.rs:''));
 }
 function fillSelects(){
   const ms=[...new Set(DATA.map(o=>o.mes))].filter(Boolean).sort();
@@ -237,39 +244,31 @@ function fillSelects(){
     const rss=[...new Set(DATA.map(o=>o.rs))].sort();
     rsSel.innerHTML='<option value="">Todas las razones sociales</option>'+rss.map(r=>`<option${r===st.rs?' selected':''}>${esc(r)}</option>`).join('');
   }
-  document.getElementById('psf').innerHTML='<option value="">Pago Softland: todos</option>'+PS.map(r=>`<option${r===st.psf?' selected':''}>${esc(r)}</option>`).join('');
-  document.getElementById('pic').innerHTML='<option value="">Pago IConstruye: todos</option>'+PIC.map(r=>`<option${r===st.pic?' selected':''}>${esc(r)}</option>`).join('')+`<option value="__none"${st.pic==='__none'?' selected':''}>Sin registro de pago</option><option value="__dif"${st.pic==='__dif'?' selected':''}>Diferencia IConstruye vs Softland</option>`;
-  document.getElementById('sii').innerHTML='<option value="">Estado SII: todos</option>'+SIIS.map(r=>`<option${r===st.sii?' selected':''}>${esc(r)}</option>`).join('');
-  document.getElementById('eis').innerHTML='<option value="">Estado IConstruye: todos</option>'+EIS.map(r=>`<option${r===st.eis?' selected':''}>${esc(r)}</option>`).join('');
-  const tps=[...new Set(DATA.map(o=>o.t))].sort();
-  document.getElementById('tp').innerHTML='<option value="">Todos los tipos</option>'+tps.map(r=>`<option${r===st.tp?' selected':''}>${esc(r)}</option>`).join('');
+  const opt=(arr,cur,todos)=>`<option value="">${todos}</option>`+arr.map(r=>`<option${r===cur?' selected':''}>${esc(r)}</option>`).join('');
+  document.getElementById('sii').innerHTML=opt(SIIS,st.sii,'Estado SII: todos');
+  document.getElementById('eis').innerHTML=opt(EIS,st.eis,'Estado IConstruye: todos');
+  document.getElementById('cf').innerHTML=opt(SF,st.cf,'Softland: todos');
+  document.getElementById('psf').innerHTML=opt(PS,st.psf,'Pago: todos');
+  document.getElementById('clearBtn').hidden=!(st.mes||st.rs||st.sii||st.eis||st.cf||st.psf||st.q);
 }
-function renderChips(){
-  const base=DATA.filter(o=>(!st.mes||o.mes===st.mes)&&(!st.rs||o.rs===st.rs)&&(!st.tp||o.t===st.tp));
-  document.getElementById('chips').innerHTML=SF.map(g=>{const n=base.filter(o=>o.sf===g).length;
-    return `<button class="chip${st.sf.has(g)?' on':''}" data-g="${g}" aria-pressed="${st.sf.has(g)}">${g} · ${n}</button>`}).join('');
-}
-const COLS=[['fo','Folio / tipo',1],['oc','OC / referencia',1],['rs','Razón social / obra',1],['pv','Proveedor',1],['fe','Emisión',0],['tot','Total CLP',0],['sii','Estado SII',1],['eics','Estado IConstruye',1],['sf','Softland',1],['fc','Contabilización',0],['ps','Pago',1]];
+const COLS=[['fe','Documento',1,11],['oc','OC / referencia',1,13],['rs','Empresa / obra',1,15],['pv','Proveedor',1,17],['tot','Total CLP',0,9],['sii','Estado SII / IConstruye',1,13],['sf','Softland',1,12],['ps','Pago',1,10]];
 function renderDoc(rows){
   rows=[...rows].sort((a,b)=>{const x=a[st.sort]??'',y=b[st.sort]??'';return (x>y?1:x<y?-1:0)*st.dir});
   const pages=Math.max(1,Math.ceil(rows.length/PAGE)); st.page=Math.min(st.page,pages-1);
   const sl=rows.slice(st.page*PAGE,(st.page+1)*PAGE);
-  let h=`<div class="tblwrap"><table><thead><tr>${COLS.map(([k,t,l])=>`<th class="${l?'l':''}" data-s="${k}">${t}${st.sort===k?(st.dir>0?' ↑':' ↓'):''}</th>`).join('')}</tr></thead><tbody>`;
-  if(!sl.length) h+='<tr><td colspan="11" class="empty">No hay documentos que coincidan con la búsqueda</td></tr>';
+  let h=`<div class="tblwrap"><table><colgroup>${COLS.map(c=>`<col style="width:${c[3]}%">`).join('')}</colgroup><thead><tr>${COLS.map(([k,t,l])=>`<th class="${l?'l':''}" data-s="${k}">${t}${st.sort===k?(st.dir>0?' ↑':' ↓'):''}</th>`).join('')}</tr></thead><tbody>`;
+  if(!sl.length) h+='<tr><td colspan="8" class="empty">No hay documentos que coincidan con la búsqueda</td></tr>';
   sl.forEach(o=>{const k=key(o), op=st.open.has(k);
     h+=`<tr class="oc${op?' open':''}" data-k="${esc(k)}" tabindex="0" aria-expanded="${op}">
-      <td><div class="ocn">${op?'▾':'▸'} ${o.fo}</div><div class="sub">${esc(o.t)}</div></td>
+      <td><div class="ocn">${op?'▾':'▸'} ${o.fo}</div><div class="sub">${esc(o.t)} · ${fd(o.fe)}</div></td>
       <td>${esc(o.oc||'—')}${o.refp?`<div class="sub">El proveedor refirió: ${esc(o.refp)}</div>`:''}</td>
       <td>${esc(o.rs)}<div class="sub">${esc(o.cg||'—')}</div></td>
       <td>${esc(o.pv)}<div class="sub">${esc(o.rut)}</div></td>
-      <td class="num">${fd(o.fe)}</td>
       <td class="num${o.tot<0?' neg':''}">${fmt(o.tot)}</td>
-      <td>${o.sii==='—'?'<span class="sub">—</span>':`<span class="pill ${siiPill(o.sii)}">${esc(o.sii)}</span>`}${o.siim?`<div class="sub motivo">${esc(o.siim)}</div>`:''}</td>
-      <td>${o.eic?`<span class="pill ${eisPill(o.eics)}">${esc(o.eics)}</span>`:'<span class="sub">Solo bandeja DTE</span>'}</td>
-      <td><span class="pill ${pill(o.sf)}">${esc(o.sf==='Pendiente de contabilizar'?'Pendiente':o.sf)}</span>${o.age!=null?`<div class="age${o.age>15?' old':''}">${o.age} días</div>`:''}</td>
-      <td class="num">${o.fc?fd(o.fc)+`<div class="sub">Cpbte ${esc(o.cpb)}</div>`:'—'}</td>
-      <td><span class="pill ${psPill(o.ps)}">${esc(o.ps)}</span>${o.egn.length?`<div class="sub">Egreso ${esc(o.egn.join(', '))}</div>`:''}${(!o.egn.length&&o.trs)?`<div class="sub">Traspaso ${esc(o.trs.map(x=>x.split(' · ')[0]).join(', '))}</div>`:''}${o.saldo?`<div class="sub">Saldo ${fmt(o.saldo)}</div>`:''}${o.fact?`<div class="sub">${esc(o.fact)}</div>`:''}${o.cesx?'<div class="sub" style="color:var(--bad)">Cedida SII sin factoring</div>':''}<div class="sub">IC: ${esc(o.pago||'sin registro')}${difPago(o)?' <b style="color:var(--bad)">≠</b>':''}</div></td></tr>`;
-    if(op){h+=`<tr class="det"><td colspan="11"><div class="detgrid">
+      <td>${o.sii==='—'?'<span class="sub">SII: —</span>':`<span class="pill ${siiPill(o.sii)}">${esc(o.sii)}</span>`}${o.siim?`<div class="sub motivo">${esc(o.siim)}</div>`:''}<div style="margin-top:4px">${o.eic?`<span class="pill ${eisPill(o.eics)}">${esc(o.eics)}</span>`:'<span class="sub">IC: solo bandeja DTE</span>'}</div></td>
+      <td><span class="pill ${pill(o.sf)}">${esc(o.sf==='Pendiente de contabilizar'?'Pendiente':o.sf)}</span>${o.fc?`<div class="sub">${fd(o.fc)} · Cpbte ${esc(o.cpb)}</div>`:''}${o.age!=null?`<div class="age${o.age>15?' old':''}">${o.age} días</div>`:''}</td>
+      <td>${o.ps==='Rechazada en SII'?'<span class="sub">—</span>':`<span class="pill ${psPill(o.ps)}">${esc(o.ps)}</span>`}${o.egn.length?`<div class="sub">Egreso ${esc(o.egn.join(', '))}</div>`:''}${(!o.egn.length&&o.trs)?`<div class="sub">Traspaso ${esc(o.trs.map(x=>x.split(' · ')[0]).join(', '))}</div>`:''}${o.saldo?`<div class="sub">Saldo ${fmt(o.saldo)}</div>`:''}${o.fact?`<div class="sub">${esc(o.fact)}</div>`:''}${o.cesx?'<div class="sub" style="color:var(--bad)">Cedida SII sin factoring</div>':''}${difPago(o)?'<div class="sub" style="color:var(--bad)">≠ IConstruye: '+esc(o.pago)+'</div>':''}</td></tr>`;
+    if(op){h+=`<tr class="det"><td colspan="8"><div class="detgrid">
       <div><span>Recepción IConstruye</span>${fd(o.fi)}</div>
       <div><span>Vencimiento</span>${fd(o.fv)}</div>
       <div><span>Neto / exento</span>${fmt(o.neto)}</div>
@@ -315,12 +314,19 @@ function renderAgg(rows,kind){
     a.n++;a.t+=o.tot; if(isPaidSF(o.ps))a.gn++; if(o.ps==='En Factoring')a.sf+=o.saldo||0; else a.sp+=o.saldo||0; if(o.sf==='Contabilizada'){a.cn++;a.ct+=o.tot} else if(o.sf==='Pendiente de contabilizar'){a.pn++;a.pt+=o.tot}});
   const arr=Object.entries(m).sort((a,b)=>kind==='mes'?(a[0]<b[0]?-1:1):b[1].t-a[1].t);
   const T=arr.reduce((s,[k,a])=>{for(const f of ['n','t','cn','ct','pn','pt','gn','sp','sf'])s[f]+=a[f];return s},{n:0,t:0,cn:0,ct:0,pn:0,pt:0,gn:0,sp:0,sf:0});
-  const row=(k,a,tot)=>`<tr${tot?' class="tot"':''}><td>${tot?'TOTAL':'<b>'+esc(kind==='mes'?mesNom(k):k)+'</b>'}</td>${kind==='pv'?`<td class="sub">${esc(a.x||'')}</td>`:''}<td class="num">${a.n}</td><td class="num">${fmt(a.t)}</td><td class="num">${a.cn}</td><td class="num">${fmt(a.ct)}</td><td class="num">${a.pn}</td><td class="num">${fmt(a.pt)}</td><td class="num">${a.n?Math.round(a.cn/a.n*100):0}%</td><td class="num">${a.gn}</td><td class="num">${fmt(a.sp)}</td><td class="num">${fmt(a.sf)}</td></tr>`;
-  return `<div class="tblwrap"><table style="min-width:980px"><thead><tr><th class="l">${kind==='rs'?'Razón social':kind==='mes'?'Mes de emisión':'Proveedor'}</th>${kind==='pv'?'<th class="l">RUT</th>':''}<th>Docs</th><th>Total recibido</th><th>Contab.</th><th>Monto contab.</th><th>Pend.</th><th>Monto pend.</th><th>% contab.</th><th>Pagadas</th><th>Saldo en Proveedores</th><th>Saldo en Factoring</th></tr></thead><tbody>
-  ${arr.length?arr.map(([k,a])=>row(k,a)).join('')+row('',T,1):'<tr><td colspan="12" class="empty">Sin datos para los filtros actuales</td></tr>'}</tbody></table></div>`;
+  const row=(k,a,tot)=>`<tr${tot?' class="tot"':''}><td>${tot?'TOTAL':'<b>'+esc(kind==='mes'?mesNom(k):k)+'</b>'}</td>${kind==='pv'?`<td class="sub">${esc(a.x||'')}</td>`:''}<td class="num">${a.n}</td><td class="num">${fmt(a.t)}</td><td class="num">${a.cn}</td><td class="num">${a.pn}</td><td class="num">${a.n?Math.round(a.cn/a.n*100):0}%</td><td class="num">${a.gn}</td><td class="num">${fmt(a.sp)}</td><td class="num">${fmt(a.sf)}</td></tr>`;
+  return `<div class="tblwrap"><table><thead><tr><th class="l">${kind==='rs'?'Razón social':kind==='mes'?'Mes de emisión':'Proveedor'}</th>${kind==='pv'?'<th class="l">RUT</th>':''}<th>Docs</th><th>Total recibido</th><th>Contab.</th><th>Pend.</th><th>% contab.</th><th>Pagadas</th><th>Saldo en Proveedores</th><th>Saldo en Factoring</th></tr></thead><tbody>
+  ${arr.length?arr.map(([k,a])=>row(k,a)).join('')+row('',T,1):'<tr><td colspan="9" class="empty">Sin datos para los filtros actuales</td></tr>'}</tbody></table></div>`;
+}
+function applyRs(){
+  const b=document.getElementById('rsBody'), t=document.getElementById('rsToggle');
+  if(!b) return;
+  b.hidden=!st.rsOpen; t.setAttribute('aria-expanded',st.rsOpen);
+  t.textContent=(st.rsOpen?'▾ ':'▸ ')+'Recibido vs contabilizado por razón social';
+  document.getElementById('panelRs').classList.toggle('collapsed',!st.rsOpen);
 }
 function render(){
-  fillSelects(); renderChips(); renderBars();
+  fillSelects(); renderBars(); applyRs();
   const rows=filtered(false); renderKpis(rows);
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.v===st.view));
   document.getElementById('view').innerHTML=st.view==='doc'?renderDoc(rows):renderAgg(rows,st.view);
@@ -385,7 +391,8 @@ if(!sinEmp) document.getElementById('alert').style.display='none';
 document.addEventListener('click',e=>{
   if(e.target.id==='exportBtn'){ toXlsx(); return }
   const b=e.target.closest('.barrow'); if(b){st.rs=st.rs===b.dataset.rs?'':b.dataset.rs;st.page=0;render();return}
-  const c=e.target.closest('.chip'); if(c){const g=c.dataset.g; st.sf.has(g)?st.sf.delete(g):st.sf.add(g); st.page=0; render(); return}
+  if(e.target.closest('#rsToggle')){st.rsOpen=!st.rsOpen;render();return}
+  if(e.target.id==='clearBtn'){Object.assign(st,{mes:'',rs:'',sii:'',eis:'',cf:'',psf:'',q:'',page:0});document.getElementById('q').value='';render();return}
   const t=e.target.closest('.tab'); if(t){st.view=t.dataset.v;render();return}
   const th=e.target.closest('th[data-s]'); if(th){const k=th.dataset.s; st.dir=st.sort===k?-st.dir:(['tot','fe','fc'].includes(k)?-1:1); st.sort=k; render(); return}
   if(e.target.id==='prev'){st.page--;render();return} if(e.target.id==='next'){st.page++;render();return}
@@ -395,9 +402,8 @@ document.addEventListener('keydown',e=>{const r=e.target.closest&&e.target.close
 document.getElementById('q').addEventListener('input',e=>{st.q=e.target.value;st.page=0;render()});
 if(!SCOPE) document.getElementById('rs').addEventListener('change',e=>{st.rs=e.target.value;st.page=0;render()});
 document.getElementById('mes').addEventListener('change',e=>{st.mes=e.target.value;st.page=0;render()});
-document.getElementById('tp').addEventListener('change',e=>{st.tp=e.target.value;st.page=0;render()});
 document.getElementById('psf').addEventListener('change',e=>{st.psf=e.target.value;st.page=0;render()});
-document.getElementById('pic').addEventListener('change',e=>{st.pic=e.target.value;st.page=0;render()});
+document.getElementById('cf').addEventListener('change',e=>{st.cf=e.target.value;st.page=0;render()});
 document.getElementById('sii').addEventListener('change',e=>{st.sii=e.target.value;st.page=0;render()});
 document.getElementById('eis').addEventListener('change',e=>{st.eis=e.target.value;st.page=0;render()});
 
