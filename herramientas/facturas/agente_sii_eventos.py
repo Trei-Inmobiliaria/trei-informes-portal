@@ -97,21 +97,24 @@ def _soap(session, url, ns, op, params=None):
 
 
 def _retorno(xml, op):
-    """El SII devuelve el XML de respuesta escapado dentro de <{op}Return>."""
+    """El SII devuelve el XML de respuesta escapado dentro de <{op}Return> (con o sin prefijo de namespace).
+    Si no aparece ese elemento, se usa la respuesta completa desescapada y se deja que el llamador valide."""
     import html
-    m = re.search(rf'<{op}Return[^>]*>(.*?)</{op}Return>', xml, re.S)
-    if not m: raise RuntimeError(f'Respuesta inesperada del SII en {op}: {xml[:300]}')
-    return html.unescape(m.group(1))
+    m = re.search(rf'<(?:[\w.-]+:)?{op}Return\b[^>]*>(.*?)</(?:[\w.-]+:)?{op}Return>', xml, re.S)
+    texto = html.unescape(m.group(1)) if m else html.unescape(xml)
+    if not re.search(r'(SEMILLA|TOKEN|ESTADO)', texto):
+        raise RuntimeError(f'Respuesta inesperada del SII en {op}: {xml[:2000]}')
+    return texto
 
 
 def obtener_token(session, key, cert):
     ns_seed, ns_tok = f'{PALENA}/CrSeed.jws', f'{PALENA}/GetTokenFromSeed.jws'
-    sem = re.search(r'<SEMILLA>(\d+)</SEMILLA>', _retorno(_soap(session, ns_seed, ns_seed, 'getSeed'), 'getSeed'))
+    sem = re.search(r'<(?:[\w.-]+:)?SEMILLA>\s*(\d+)\s*</(?:[\w.-]+:)?SEMILLA>', _retorno(_soap(session, ns_seed, ns_seed, 'getSeed'), 'getSeed'))
     if not sem: raise RuntimeError('El SII no entregó semilla')
     firmado = firmar_semilla(sem.group(1), key, cert)
     import html
     resp = _retorno(_soap(session, ns_tok, ns_tok, 'getToken', {'pszXml': html.escape(firmado, quote=False)}), 'getToken')
-    est = re.search(r'<ESTADO>(\d+)</ESTADO>', resp); tok = re.search(r'<TOKEN>([^<]+)</TOKEN>', resp)
+    est = re.search(r'<(?:[\w.-]+:)?ESTADO>\s*(\d+)\s*</(?:[\w.-]+:)?ESTADO>', resp); tok = re.search(r'<(?:[\w.-]+:)?TOKEN>\s*([^<\s]+)\s*</(?:[\w.-]+:)?TOKEN>', resp)
     if not tok:
         glosa = re.search(r'<GLOSA>([^<]*)</GLOSA>', resp)
         raise RuntimeError(f'El SII rechazó la autenticación (estado {est.group(1) if est else "?"}: {glosa.group(1) if glosa else resp[:200]})')
