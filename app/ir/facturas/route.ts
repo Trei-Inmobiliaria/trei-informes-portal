@@ -21,6 +21,30 @@ const ARCHIVOS: Record<"full" | "vcb", string> = {
   vcb: "facturas-recibidas-2026-vcb.html",
 };
 
+// Fuente privada opcional: si FACTURAS_FUENTE_URL está definida (carpeta/bucket privado, sin barra final),
+// el HTML diario (Facturas_Recibidas.html y Facturas_Recibidas_VCB.html, generados por
+// herramientas/facturas) se lee desde ahí con FACTURAS_FUENTE_TOKEN como Bearer. Así los datos
+// no se versionan en esta repo pública. Si no está definida o falla, se usa el archivo de /privado.
+const REMOTOS: Record<"full" | "vcb", string> = {
+  full: "Facturas_Recibidas.html",
+  vcb: "Facturas_Recibidas_VCB.html",
+};
+
+async function htmlRemoto(pedido: "full" | "vcb"): Promise<string | null> {
+  const base = process.env.FACTURAS_FUENTE_URL;
+  if (!base) return null;
+  try {
+    const token = process.env.FACTURAS_FUENTE_TOKEN;
+    const r = await fetch(`${base.replace(/\/$/, "")}/${REMOTOS[pedido]}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      cache: "no-store",
+    });
+    return r.ok ? await r.text() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const session = await auth();
   const email = session?.user?.email;
@@ -47,7 +71,7 @@ export async function GET(request: NextRequest) {
   const ruta = path.join(process.cwd(), "privado", archivo);
 
   try {
-    const html = await readFile(ruta, "utf-8");
+    const html = (await htmlRemoto(pedido)) ?? (await readFile(ruta, "utf-8"));
     return new NextResponse(html, {
       status: 200,
       headers: {

@@ -1,0 +1,413 @@
+<title>__TITULO__</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,400;0,500;0,700;1,400&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* Manual de Marca Trei: negro y blanco cargan la estructura, rojo Trei = activo/acento, color funcional = estado. Tema único claro. */
+:root{
+  --rojo:#E1093F; --negro:#111111; --fondo:#f7f7f8; --blanco:#FFFFFF;
+  --borde:#e4e4e8; --linea:#f0f0f2; --t2:#555; --t3:#666; --t4:#888; --t5:#999;
+  --ok:#006400; --ok-bg:#dff0e3; --warn:#8a5a00; --warn-bg:#fdf1d3; --ambar:#f0b429; --bad:#c00030; --bad-bg:#f7d4d4; --neu:#666; --neu-bg:#D9D9D9;
+  --rosa:#fff5f7; --hover:#fafafa;
+  --f:"Ubuntu",Calibri,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--fondo);color:var(--negro);font:400 13px/1.45 var(--f)}
+.topbar{background:var(--negro);color:var(--blanco);padding-inline:20px;padding-block:14px;border-bottom:3px solid var(--rojo)}
+.topbar .in{max-width:1280px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px}
+.brand{font:700 10px var(--f);letter-spacing:1.4px;text-transform:uppercase;color:var(--rojo)}
+h1{font:700 16px/1.2 var(--f);margin:6px 0 0;letter-spacing:.5px;text-transform:uppercase;text-wrap:balance}
+.meta{font:400 11px/1.5 var(--f);color:#bbb;text-align:right}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:24px 48px;display:grid;gap:24px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--blanco);border:1.5px solid var(--borde);border-left:4px solid var(--c,var(--negro));border-radius:8px;padding:14px 16px;display:grid;gap:4px}
+.kpi .lb{font:700 10px var(--f);letter-spacing:.8px;text-transform:uppercase;color:var(--t4)}
+.kpi b{font:700 28px/1.1 var(--f);font-variant-numeric:tabular-nums}
+.kpi .un{font-size:11px;color:var(--t5)}
+.panel{background:var(--blanco);border:1.5px solid var(--borde);border-radius:8px;padding:18px 20px;min-width:0}
+.panel h2{font:700 11px/1.2 var(--f);letter-spacing:1.4px;text-transform:uppercase;color:var(--rojo);margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.panel h2 small{font:italic 400 11px var(--f);letter-spacing:0;text-transform:none;color:var(--t5)}
+.bars{display:grid;gap:4px}
+.barrow{display:grid;grid-template-columns:minmax(120px,240px) 1fr auto;gap:10px;align-items:center;cursor:pointer;border-radius:6px;padding:5px 8px;border:0;border-left:3px solid transparent;background:none;color:inherit;font:inherit;text-align:left;width:100%}
+.barrow:hover{background:var(--hover)}
+.barrow.on{border-left-color:var(--rojo);background:var(--rosa)}
+.barrow.on .nm{color:var(--rojo)}
+.barrow.on .fill{background:var(--rojo)}
+.barrow:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--rojo);outline-offset:2px}
+.barrow .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.track{height:12px;background:var(--linea);border-radius:4px;overflow:hidden}
+.fill{height:100%;background:var(--negro);border-radius:4px}
+.val{font-size:12px;font-variant-numeric:tabular-nums;color:var(--t3);white-space:nowrap}
+.val em{font-style:normal;font-weight:700;color:var(--negro)}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.controls input,.controls select{font:inherit;color:var(--negro);background:var(--blanco);border:1px solid #d8d8d8;border-radius:6px;padding:8px 10px;min-width:0}
+.controls input{flex:1 1 260px}
+.btn-export{font:700 11px var(--f);letter-spacing:.8px;text-transform:uppercase;background:var(--negro);color:var(--blanco);border:0;border-radius:6px;padding:9px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn-export:hover{background:var(--rojo)}
+.btn-export:disabled{opacity:.5;cursor:wait}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:500 12px var(--f);border:1px solid #d8d8d8;background:var(--blanco);color:var(--t3);border-radius:999px;padding:6px 14px;cursor:pointer}
+.chip.on{background:var(--negro);border-color:var(--negro);color:var(--blanco)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--borde);margin-bottom:12px;flex-wrap:wrap}
+.tab{font:700 11px var(--f);letter-spacing:.8px;text-transform:uppercase;background:none;border:0;border-bottom:3px solid transparent;color:var(--t4);padding:9px 12px;cursor:pointer}
+.tab.on{color:var(--rojo);border-color:var(--rojo)}
+.tblwrap{overflow-x:auto;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+table{border-collapse:collapse;width:100%;min-width:980px;background:var(--blanco)}
+th{font:700 10px var(--f);letter-spacing:.8px;text-transform:uppercase;color:var(--blanco);background:var(--negro);text-align:right;padding:9px 8px;white-space:nowrap;cursor:pointer;user-select:none}
+th:first-child,th.l{text-align:left}
+td{padding:8px;border-bottom:1px solid var(--linea);vertical-align:top;font-size:12.5px}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.tot td{border-top:2px solid var(--negro);background:#f2f2f3;font-weight:700}
+tr.oc{cursor:pointer}
+tr.oc:hover td{background:var(--hover)}
+tr.oc.open td{background:var(--rosa)}
+tr.oc.open td:first-child{box-shadow:inset 3px 0 0 var(--rojo)}
+.ocn{font-weight:700;white-space:nowrap}
+.sub{font-size:11px;color:var(--t4)}
+.pill{display:inline-block;font:700 10px/1 var(--f);letter-spacing:.5px;text-transform:uppercase;padding:4px 7px;border-radius:4px;white-space:nowrap}
+.p-ok{color:var(--ok);background:var(--ok-bg)}.p-warn{color:var(--warn);background:var(--warn-bg)}.p-bad{color:var(--bad);background:var(--bad-bg)}.p-neu{color:var(--neu);background:#eee}
+tr.det td{background:#fbfbfc;padding:14px 18px 18px}
+.detgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 24px;margin-bottom:12px}
+.detgrid div span{display:block;font:700 10px var(--f);letter-spacing:.8px;text-transform:uppercase;color:var(--t4)}
+.eyebrow{font:700 10px var(--f);letter-spacing:.8px;text-transform:uppercase;color:var(--t4)}
+.lines{min-width:760px}
+.lines th{cursor:default;background:#333}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.flow .step{background:var(--blanco);border:1.5px solid var(--borde);border-radius:6px;padding:3px 8px;font-size:12px}
+.flow .arr{color:var(--t5)}
+.empty{padding:24px;text-align:center;color:var(--t5);font-style:italic}
+.nota{font:italic 400 11px/1.5 var(--f);color:var(--t5);display:grid;gap:4px}
+.fresh{background:#f3f6fb;border-left:4px solid #3b6fb6;border-radius:0 8px 8px 0;padding:10px 14px;font-size:12px;color:var(--t2);margin-bottom:14px}.fresh.old{background:#fdeaea;border-left-color:var(--bad)}.motivo{color:var(--bad);font-weight:600}
+.alert{background:#fff9e6;border-left:4px solid var(--ambar);border-radius:0 8px 8px 0;padding:10px 14px;font-size:12px;color:var(--t2)}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;font-size:12px;color:var(--t4)}
+.pager button{font:inherit;border:1px solid #d8d8d8;background:var(--blanco);color:var(--negro);border-radius:6px;padding:6px 10px;cursor:pointer}
+.pager button:disabled{opacity:.4;cursor:default}
+@media (max-width:560px){.barrow{grid-template-columns:1fr auto}.barrow .track{grid-column:1/-1;order:3}.meta{text-align:left}}
+@media (prefers-reduced-motion:no-preference){.fill{transition:width .35s ease}}
+
+.stack{display:flex;height:12px;border-radius:4px;overflow:hidden;background:var(--linea)}
+.stack .a{background:var(--negro)}.stack .b{background:var(--ambar)}.stack .c{background:#D9D9D9}
+.barrow.on .stack .a{background:var(--rojo)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--t3)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+td.neg{color:var(--bad)}
+.age{font-size:11px;color:var(--t4)}
+.detgrid div span.pill{display:inline-block;font:700 10px/1 var(--f);letter-spacing:.5px;color:inherit}
+.detgrid div span.pill.p-ok{color:var(--ok)}.detgrid div span.pill.p-warn{color:var(--warn)}.detgrid div span.pill.p-bad{color:var(--bad)}.detgrid div span.pill.p-neu{color:var(--neu)}
+@media (max-width:560px){.barrow .stack{grid-column:1/-1;order:3}}
+.age.old{color:var(--bad);font-weight:700}
+</style>
+
+<div class="topbar"><div class="in">
+  <div>
+    <div class="brand">__MARCA__</div>
+    <h1>__H1__</h1>
+  </div>
+  <div class="meta" id="metaTop"></div>
+</div></div>
+<div class="wrap">
+  <div class="fresh" id="fresh"></div>
+  <section class="kpis" id="kpis" aria-live="polite"></section>
+
+  <section class="panel" id="panelRs">
+    <h2>Recibido vs contabilizado por razón social <small id="rsHint">Toca una fila para filtrar</small></h2>
+    <div class="legend" style="margin-bottom:10px"><span><i style="background:#111"></i>Contabilizado en Softland</span><span><i style="background:#f0b429"></i>Pendiente de contabilizar</span><span><i style="background:#D9D9D9"></i>Sin empresa en Softland / provisoria</span></div>
+    <div class="bars" id="bars"></div>
+  </section>
+
+  <section class="panel">
+    <div class="controls" style="margin-bottom:12px">
+      <input id="q" type="search" placeholder="Buscar folio, proveedor, RUT, obra, cuenta, comprobante…" aria-label="Buscar">
+      <select id="mes" aria-label="Mes de emisión"></select>
+      <select id="rs" aria-label="Razón social"></select>
+      <select id="tp" aria-label="Tipo de documento"></select>
+      <select id="psf" aria-label="Estado de pago Softland"></select>
+      <select id="pic" aria-label="Estado de pago IConstruye"></select>
+      <select id="sii" aria-label="Estado SII"></select>
+      <select id="eis" aria-label="Estado IConstruye"></select>
+      <button id="exportBtn" class="btn-export" title="Exporta la vista filtrada actual a Excel">↓ Exportar a Excel</button>
+    </div>
+    <div class="chips" id="chips" style="margin-bottom:14px"></div>
+    <div class="tabs" role="tablist">
+      <button class="tab on" data-v="doc" role="tab" id="tab-doc">Documentos</button>
+      <button class="tab" data-v="mes" role="tab" id="tab-mes">Por mes</button>
+      <button class="tab" data-v="rs" role="tab" id="tab-rs">Por razón social</button>
+      <button class="tab" data-v="pv" role="tab" id="tab-pv">Por proveedor</button>
+    </div>
+    <div id="view"></div>
+  </section>
+
+  <div class="alert" id="alert"></div>
+  <div class="nota">
+    <div id="notaUniverso"></div>
+    <div><b>Estado SII</b> (fuente: consulta de eventos al SII con certificado digital): «Rechazada» = el receptor rechazó el documento por la regla de aceptación (reclamo RCD); el motivo mostrado es «Mal referencia OC-EEPP». «Aceptada» = el SII registra aceptación (ACD/ERM). «Sin pronunciamiento» = consultado sin eventos. «Sin consulta» = aún no consultado. Los rechazos manuales del flujo de aprobación de IConstruye no alteran este estado: se ven en «Estado IConstruye». Notas de crédito y débito no se consultan.</div>
+    <div><b>OC / referencia</b>: la OC proviene de las recepciones asociadas a la factura en IConstruye; «El proveedor refirió» muestra el código tal como lo informó el proveedor en el DTE (OC, contrato, etc.), útil para detectar referencias incompletas, por ejemplo un contrato «1700-30» cuando corresponde «1700-30-X».</div>
+    <div>Documentos rechazados en el SII sin contabilizar se muestran como «Rechazada en SII»: no cuentan como «Pendiente de contabilizar» ni en la antigüedad.</div>
+    <div>Cruce con Softland por empresa + tipo de documento + folio + RUT del proveedor, contra comprobantes vigentes (cpbest = V) desde nov-2025. Cuando el monto del pasivo en Softland difiere del total del DTE, el detalle muestra el monto Softland.</div>
+    <div>Estado de pago Softland: «Pagada (egreso)» = egreso con glosa «Pago: tipo folio» sobre la cuenta de proveedores; «Cancelada por traspaso» = cruce en comprobante de traspaso; «En Factoring» / «Pagada a factoring» = factura traspasada desde Proveedores a la cuenta 2-1-02-109 Cuentas por Pagar a Factoring (glosa «FACTORING … folio»), con su saldo por pagar al factoring o su egreso de pago; «Pagada sin referencia» = el saldo del auxiliar en Proveedores (2-1-02, sin empresas relacionadas 103) ya no alcanza para este documento, asignando el saldo a los documentos más recientes (FIFO). Saldo por pagar = saldo del auxiliar asignado FIFO. Pagos en Softland al 30-09-2026.</div>
+    <div>Estado de pago IConstruye: campo de la factura en el flujo de compras; los documentos que solo están en la bandeja DTE no lo tienen. «≠» marca diferencia entre IConstruye y Softland.</div>
+    <div>Cuenta y centro de costo = línea de mayor monto del comprobante contable, excluidos pasivos e IVA crédito. Notas de crédito en negativo.</div>
+  </div>
+</div>
+
+<script>
+const DATA_RAW = __DATA__;
+const META = __META__;
+const SCOPE = __SCOPE__;  // null = sin restricción; string = filtra a esa razón social y oculta el selector/panel RS
+const DATA = SCOPE ? DATA_RAW.filter(o=>o.rs===SCOPE) : DATA_RAW;
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const mesNom=m=>MESES[+m.slice(5,7)-1]+' '+m.slice(0,4);
+const SF = ['Contabilizada','Pendiente de contabilizar','Rechazada en SII','Provisoria / nula','Sin empresa en Softland'];
+const EIC_MAP={'Aprobado':'Aprobada','Ingresado':'Ingresada','Cancelado':'Cancelada','Rechazado':'Rechazada','Aprobada Parcialmente':'Aprobada parcialmente','Espera Aprobación':'Espera aprobación'};
+const EIS=['Ingresada','Espera aprobación','Aprobada parcialmente','Aprobada','Rechazada','Cancelada','Sin registro'];
+const SIIS=['Rechazada','Aceptada','Sin pronunciamiento','Sin consulta'];
+const eisPill=e=>e==='Aprobada'?'p-ok':(e==='Rechazada'||e==='Cancelada')?'p-bad':e==='Sin registro'?'p-neu':'p-warn';
+const siiPill=e=>e==='Aceptada'?'p-ok':e==='Rechazada'?'p-bad':'p-neu';
+const pill = e => e==='Contabilizada'?'p-ok':e==='Pendiente de contabilizar'?'p-warn':e==='Rechazada en SII'?'p-bad':'p-neu';
+const fmt = n => n==null?'':Math.round(n).toLocaleString('es-CL');
+const fmtM = n => (n/1e6).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1});
+const fd = s => s? s.slice(8,10)+'-'+s.slice(5,7)+'-'+s.slice(0,4):'—';
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const _n=new Date(), _p=x=>String(x).padStart(2,'0');
+const HOYS=_n.getFullYear()+'-'+_p(_n.getMonth()+1)+'-'+_p(_n.getDate());   // hoy del navegador (el informe siempre mide contra el día actual)
+const HOY = new Date(HOYS);
+const ANIO = META.desde.slice(0,4);
+const MES_C = MESES[+META.corte.slice(5,7)-1];
+const MES_CORTO = MES_C.slice(0,3).toLowerCase();
+const fdt = t => t? fd(t.slice(0,10))+' '+t.slice(11,16):'—';
+const dias = s => s? Math.round((HOY-new Date(s))/864e5):null;
+DATA.forEach(o=>{o.mes=o.fe?o.fe.slice(0,7):'';o.age=o.sf==='Pendiente de contabilizar'?dias(o.fe):null; o.eics=o.eic?(EIC_MAP[o.eic]||o.eic):'Sin registro'; o.sii=o.sii||'—'; o.egn=(o.eg||[]).map(x=>x.split(' · ')[0]); o.lag=o.fc&&o.fe?Math.round((new Date(o.fc)-new Date(o.fe))/864e5):null;
+  o.hay=[o.ps,o.oc,o.refp,o.sii,o.siim,o.eics,o.egn.join(' '),o.pago,(o.eg||[]).join(' '),o.mes?mesNom(o.mes):'',o.fo,o.pv,o.rut,o.rs,o.cg,o.cgc,o.cta,o.cc,o.cpb,o.t,o.ap,o.eic].join(' ').toLowerCase()});
+
+if(SCOPE){ document.getElementById('panelRs').style.display='none'; }
+
+const PS=['Rechazada en SII','Pagada (egreso)','Pagada a factoring','Pagada sin referencia','Cancelada por traspaso','Pago parcial','En Proveedores','En Factoring','Sin contabilizar','Nota de crédito'];
+const PIC=['Totalmente Pagado','Parcialmente Pagado','Sin Pago'];
+const psPill=s=>s==='Rechazada en SII'?'p-bad':s.startsWith('Pagada')||s.startsWith('Cancelada')?'p-ok':s==='Pago parcial'||s==='En Factoring'?'p-warn':s==='En Proveedores'?'p-bad':'p-neu';
+const isPaidSF=s=>s.startsWith('Pagada')||s.startsWith('Cancelada');
+const porPagar=s=>s==='En Proveedores'||s==='Pago parcial'||s==='En Factoring';
+const difPago=o=>o.pago&&((o.pago==='Totalmente Pagado'&&porPagar(o.ps))||(o.pago==='Sin Pago'&&isPaidSF(o.ps)));
+const st={psf:'',pic:'',sii:'',eis:'',mes:'',rs:'',tp:'',sf:new Set(SF),q:'',view:'doc',sort:'fe',dir:-1,open:new Set(),page:0};
+const PAGE=50;
+const key=o=>o.rut+'|'+o.t+'|'+o.fo+'|'+o.rs;
+
+function filtered(ignoreRs){
+  const q=st.q.trim().toLowerCase();
+  return DATA.filter(o=>(!st.mes||o.mes===st.mes)&&(ignoreRs||!st.rs||o.rs===st.rs)&&(!st.tp||o.t===st.tp)&&(!st.psf||o.ps===st.psf)&&(!st.sii||o.sii===st.sii)&&(!st.eis||o.eics===st.eis)&&(!st.pic||(st.pic==='__none'?!o.pago:st.pic==='__dif'?difPago(o):o.pago===st.pic))&&st.sf.has(o.sf)&&(!q||q.split(/\s+/).every(t=>o.hay.includes(t))));
+}
+function renderKpis(rows){
+  const tot=rows.reduce((a,o)=>a+o.tot,0);
+  const c=rows.filter(o=>o.sf==='Contabilizada'), p=rows.filter(o=>o.sf==='Pendiente de contabilizar');
+  const ct=c.reduce((a,o)=>a+o.tot,0), pt=p.reduce((a,o)=>a+o.tot,0);
+  const old=p.filter(o=>o.age>15).length;
+  const pg=rows.filter(o=>isPaidSF(o.ps)), pp=rows.filter(o=>o.ps==='En Proveedores'||o.ps==='Pago parcial'), pfac=rows.filter(o=>o.ps==='En Factoring');
+  const sfac=pfac.reduce((a,o)=>a+(o.saldo||0),0);
+  const sp=pp.reduce((a,o)=>a+(o.saldo||0),0), venc=pp.filter(o=>o.fv&&o.fv<HOYS).length;
+  const rj=rows.filter(o=>o.sii==='Rechazada'), rjt=rj.reduce((a,o)=>a+Math.abs(o.tot),0);
+  const lag=c.filter(o=>o.lag!=null).map(o=>o.lag).sort((a,b)=>a-b); const med=lag.length?lag[Math.floor(lag.length/2)]:null;
+  document.getElementById('kpis').innerHTML=[
+    [rows.length.toLocaleString('es-CL'),'Documentos recibidos',st.mes?mesNom(st.mes):'Ene–'+MES_CORTO+' '+ANIO,'#111111'],
+    [fmtM(tot),'Monto total recibido','MM$ CLP con IVA','#111111'],
+    [c.length.toLocaleString('es-CL'),'Contabilizados','MM$ '+fmtM(ct)+' · '+(rows.length?Math.round(c.length/rows.length*100):0)+'% de los documentos','#00B050'],
+    [p.length,'Pendientes de contabilizar','MM$ '+fmtM(pt),'#f0b429'],
+    [old,'Pendientes > 15 días','desde la emisión','#E1093F'],
+    [rj.length,'Rechazadas en SII','MM$ '+fmtM(rjt)+' · regla de aceptación','#E1093F'],
+    [pg.length.toLocaleString('es-CL'),'Pagadas en Softland','egreso, factoring, traspaso o saldo auxiliar','#006400'],
+    [fmtM(sp),'Por pagar en Proveedores','MM$ · '+pp.length+' documentos · '+venc+' vencidos','#E1093F'],
+    [fmtM(sfac),'Por pagar en Factoring','MM$ · '+pfac.length+' facturas cedidas','#f0b429'],
+    [med==null?'—':med,'Días a contabilizar','mediana emisión → comprobante','#D9D9D9']
+  ].map(([b,s,u,col])=>`<div class="kpi" style="--c:${col}"><span class="lb">${s}</span><b>${b}</b><span class="un">${u}</span></div>`).join('');
+}
+function renderBars(){
+  if(SCOPE) return;
+  const rows=filtered(true), m={};
+  rows.forEach(o=>{m[o.rs]=m[o.rs]||{a:0,b:0,c:0,n:0,na:0};const x=m[o.rs];x.n++;
+    if(o.sf==='Contabilizada'){x.a+=Math.abs(o.tot);x.na++} else if(o.sf==='Pendiente de contabilizar') x.b+=Math.abs(o.tot); else x.c+=Math.abs(o.tot)});
+  const arr=Object.entries(m).sort((a,b)=>(b[1].a+b[1].b+b[1].c)-(a[1].a+a[1].b+a[1].c)); const max=Math.max(1,...arr.map(([k,x])=>x.a+x.b+x.c));
+  document.getElementById('bars').innerHTML=arr.length?arr.map(([k,x])=>{const t=x.a+x.b+x.c;return `<button class="barrow${st.rs===k?' on':''}" data-rs="${esc(k)}" aria-pressed="${st.rs===k}"><span class="nm" title="${esc(k)}">${esc(k)}</span><span class="stack" style="width:${(t/max*100).toFixed(1)}%"><span class="a" style="width:${(x.a/t*100).toFixed(1)}%"></span><span class="b" style="width:${(x.b/t*100).toFixed(1)}%"></span><span class="c" style="width:${(x.c/t*100).toFixed(1)}%"></span></span><span class="val"><em>${x.na}/${x.n}</em> contab. · $ ${fmtM(t)} M</span></button>`}).join(''):'<div class="empty">Sin documentos para los filtros actuales</div>';
+  document.getElementById('rsHint').textContent=st.rs?'Toca de nuevo para quitar el filtro':'Toca una fila para filtrar';
+}
+function fillSelects(){
+  const ms=[...new Set(DATA.map(o=>o.mes))].filter(Boolean).sort();
+  document.getElementById('mes').innerHTML=`<option value="">Todo ${ANIO} (ene–${MES_CORTO})</option>`+ms.map(m=>`<option value="${m}"${m===st.mes?' selected':''}>${mesNom(m)}</option>`).join('');
+  const rsSel=document.getElementById('rs');
+  if(SCOPE){ rsSel.style.display='none'; }
+  else{
+    const rss=[...new Set(DATA.map(o=>o.rs))].sort();
+    rsSel.innerHTML='<option value="">Todas las razones sociales</option>'+rss.map(r=>`<option${r===st.rs?' selected':''}>${esc(r)}</option>`).join('');
+  }
+  document.getElementById('psf').innerHTML='<option value="">Pago Softland: todos</option>'+PS.map(r=>`<option${r===st.psf?' selected':''}>${esc(r)}</option>`).join('');
+  document.getElementById('pic').innerHTML='<option value="">Pago IConstruye: todos</option>'+PIC.map(r=>`<option${r===st.pic?' selected':''}>${esc(r)}</option>`).join('')+`<option value="__none"${st.pic==='__none'?' selected':''}>Sin registro de pago</option><option value="__dif"${st.pic==='__dif'?' selected':''}>Diferencia IConstruye vs Softland</option>`;
+  document.getElementById('sii').innerHTML='<option value="">Estado SII: todos</option>'+SIIS.map(r=>`<option${r===st.sii?' selected':''}>${esc(r)}</option>`).join('');
+  document.getElementById('eis').innerHTML='<option value="">Estado IConstruye: todos</option>'+EIS.map(r=>`<option${r===st.eis?' selected':''}>${esc(r)}</option>`).join('');
+  const tps=[...new Set(DATA.map(o=>o.t))].sort();
+  document.getElementById('tp').innerHTML='<option value="">Todos los tipos</option>'+tps.map(r=>`<option${r===st.tp?' selected':''}>${esc(r)}</option>`).join('');
+}
+function renderChips(){
+  const base=DATA.filter(o=>(!st.mes||o.mes===st.mes)&&(!st.rs||o.rs===st.rs)&&(!st.tp||o.t===st.tp));
+  document.getElementById('chips').innerHTML=SF.map(g=>{const n=base.filter(o=>o.sf===g).length;
+    return `<button class="chip${st.sf.has(g)?' on':''}" data-g="${g}" aria-pressed="${st.sf.has(g)}">${g} · ${n}</button>`}).join('');
+}
+const COLS=[['fo','Folio / tipo',1],['oc','OC / referencia',1],['rs','Razón social / obra',1],['pv','Proveedor',1],['fe','Emisión',0],['tot','Total CLP',0],['sii','Estado SII',1],['eics','Estado IConstruye',1],['sf','Softland',1],['fc','Contabilización',0],['ps','Pago',1]];
+function renderDoc(rows){
+  rows=[...rows].sort((a,b)=>{const x=a[st.sort]??'',y=b[st.sort]??'';return (x>y?1:x<y?-1:0)*st.dir});
+  const pages=Math.max(1,Math.ceil(rows.length/PAGE)); st.page=Math.min(st.page,pages-1);
+  const sl=rows.slice(st.page*PAGE,(st.page+1)*PAGE);
+  let h=`<div class="tblwrap"><table><thead><tr>${COLS.map(([k,t,l])=>`<th class="${l?'l':''}" data-s="${k}">${t}${st.sort===k?(st.dir>0?' ↑':' ↓'):''}</th>`).join('')}</tr></thead><tbody>`;
+  if(!sl.length) h+='<tr><td colspan="11" class="empty">No hay documentos que coincidan con la búsqueda</td></tr>';
+  sl.forEach(o=>{const k=key(o), op=st.open.has(k);
+    h+=`<tr class="oc${op?' open':''}" data-k="${esc(k)}" tabindex="0" aria-expanded="${op}">
+      <td><div class="ocn">${op?'▾':'▸'} ${o.fo}</div><div class="sub">${esc(o.t)}</div></td>
+      <td>${esc(o.oc||'—')}${o.refp?`<div class="sub">El proveedor refirió: ${esc(o.refp)}</div>`:''}</td>
+      <td>${esc(o.rs)}<div class="sub">${esc(o.cg||'—')}</div></td>
+      <td>${esc(o.pv)}<div class="sub">${esc(o.rut)}</div></td>
+      <td class="num">${fd(o.fe)}</td>
+      <td class="num${o.tot<0?' neg':''}">${fmt(o.tot)}</td>
+      <td>${o.sii==='—'?'<span class="sub">—</span>':`<span class="pill ${siiPill(o.sii)}">${esc(o.sii)}</span>`}${o.siim?`<div class="sub motivo">${esc(o.siim)}</div>`:''}</td>
+      <td>${o.eic?`<span class="pill ${eisPill(o.eics)}">${esc(o.eics)}</span>`:'<span class="sub">Solo bandeja DTE</span>'}</td>
+      <td><span class="pill ${pill(o.sf)}">${esc(o.sf==='Pendiente de contabilizar'?'Pendiente':o.sf)}</span>${o.age!=null?`<div class="age${o.age>15?' old':''}">${o.age} días</div>`:''}</td>
+      <td class="num">${o.fc?fd(o.fc)+`<div class="sub">Cpbte ${esc(o.cpb)}</div>`:'—'}</td>
+      <td><span class="pill ${psPill(o.ps)}">${esc(o.ps)}</span>${o.egn.length?`<div class="sub">Egreso ${esc(o.egn.join(', '))}</div>`:''}${(!o.egn.length&&o.trs)?`<div class="sub">Traspaso ${esc(o.trs.map(x=>x.split(' · ')[0]).join(', '))}</div>`:''}${o.saldo?`<div class="sub">Saldo ${fmt(o.saldo)}</div>`:''}${o.fact?`<div class="sub">${esc(o.fact)}</div>`:''}${o.cesx?'<div class="sub" style="color:var(--bad)">Cedida SII sin factoring</div>':''}<div class="sub">IC: ${esc(o.pago||'sin registro')}${difPago(o)?' <b style="color:var(--bad)">≠</b>':''}</div></td></tr>`;
+    if(op){h+=`<tr class="det"><td colspan="11"><div class="detgrid">
+      <div><span>Recepción IConstruye</span>${fd(o.fi)}</div>
+      <div><span>Vencimiento</span>${fd(o.fv)}</div>
+      <div><span>Neto / exento</span>${fmt(o.neto)}</div>
+      <div><span>IVA</span>${fmt(o.iva)}</div>
+      <div><span>Centro de gestión</span>${esc(o.cgc?o.cgc+' · ':'')}${esc(o.cg||'—')}</div>
+      <div><span>Asociación OC</span>${esc(o.asoc||'—')}</div>
+      <div><span>Acuse SII (IConstruye)</span>${esc(o.acept||'—')}</div>
+      <div><span>OC (recepciones IConstruye)</span>${esc(o.oc||'—')}</div>
+      <div><span>El proveedor refirió (DTE)</span>${esc(o.refp||'—')}</div>
+      <div><span>Estado SII</span>${o.sii==='—'?'—':`<span class="pill ${siiPill(o.sii)}">${esc(o.sii)}</span>`}${o.siim?` <b class="motivo">${esc(o.siim)}</b>`:''}</div>
+      <div><span>Fecha evento SII / última consulta</span>${fd(o.siif)} / ${fdt(o.siic)}</div>
+      <div><span>Estado IConstruye</span>${esc(o.eic?o.eics:'Sin registro (solo bandeja DTE)')}</div>
+      ${o.ref?`<div><span>Documento de referencia</span>${esc(o.ref)}</div>`:''}
+      ${o.msf!=null?`<div><span>Monto pasivo Softland</span><b style="color:var(--bad)">${fmt(o.msf)}</b> (difiere del DTE)</div>`:''}
+      <div><span>Comprobante Softland</span>${o.cpb?esc(o.emp+' · '+o.cpb+' · '+fd(o.fc)):'—'}</div>
+      <div><span>Días emisión → contabilización</span>${o.lag??'—'}</div>
+      <div><span>Cuenta contable</span>${esc(o.cta||'—')}</div>
+      <div><span>Centro de costo Softland</span>${esc(o.cc||'—')}</div>
+      </div>
+      <div class="eyebrow" style="margin:4px 0 6px">Seguimiento de pago</div>
+      <div class="detgrid">
+      <div><span>Estado pago IConstruye</span>${esc(o.pago||'Sin registro (solo bandeja DTE)')}</div>
+      <div><span>Fecha pago IConstruye</span>${fd(o.fpi)}</div>
+      <div><span>Fecha estimada de pago</span>${fd(o.fep)}</div>
+      <div><span>Estado pago Softland</span><span class="pill ${psPill(o.ps)}">${esc(o.ps)}</span>${difPago(o)?' <b style="color:var(--bad)">difiere de IConstruye</b>':''}</div>
+      <div><span>Pagado / saldo ${o.ps==='En Factoring'||o.ps==='Pagada a factoring'?'en Factoring':'en Proveedores'}</span>${o.pagado!=null?fmt(o.pagado)+' / '+fmt(o.saldo||0):'—'}</div>
+      <div><span>Vencimiento</span>${fd(o.fv)}${(o.saldo&&o.fv&&o.fv<HOYS)?` <b style="color:var(--bad)">vencida ${Math.round((HOY-new Date(o.fv))/864e5)} días</b>`:''}</div>
+      </div>
+      ${o.fact||o.ces?`<div class="detgrid"><div><span>Factoring (Softland)</span>${esc(o.fact||'No registrada en Softland')}</div><div><span>Cesión en SII (IConstruye)</span>${esc(o.ces||'Sin cesión informada')}${o.cesx?' <b style="color:var(--bad)">cedida en SII pero no traspasada a Factoring en Softland</b>':''}</div></div>`:''}
+      ${o.fces?`<div style="margin-bottom:10px"><div class="eyebrow" style="margin-bottom:6px">Traspaso a Factoring 2-1-02-109 (cpbte · fecha · factoring · monto)</div><div class="flow">${o.fces.map(s=>`<span class="step">${esc(s)}</span>`).join('')}</div></div>`:''}
+      ${o.fpag?`<div style="margin-bottom:10px"><div class="eyebrow" style="margin-bottom:6px">Pagos al factoring (cpbte · fecha · factoring · monto)</div><div class="flow">${o.fpag.map(s=>`<span class="step">${esc(s)}</span>`).join('')}</div></div>`:''}
+      ${o.eg?`<div style="margin-bottom:10px"><div class="eyebrow" style="margin-bottom:6px">Egresos Softland (cpbte · fecha · banco · monto)</div><div class="flow">${o.eg.map(s=>`<span class="step">${esc(s)}</span>`).join('')}</div></div>`:''}
+      ${o.trs?`<div style="margin-bottom:10px"><div class="eyebrow" style="margin-bottom:6px">Traspasos Softland (cpbte · fecha · monto)</div><div class="flow">${o.trs.map(s=>`<span class="step">${esc(s)}</span>`).join('')}</div></div>`:''}
+      <div><div class="eyebrow" style="margin-bottom:6px">Flujo de aprobación IConstruye</div><div class="flow">${o.ap?o.ap.split(' → ').map(s=>`<span class="step">${esc(s)}</span>`).join('<span class="arr">→</span>'):'<span class="sub">Sin flujo de aprobación (documento solo en bandeja DTE)</span>'}</div></div>
+      </td></tr>`}
+  });
+  h+=`</tbody></table></div><div class="pager"><span>${rows.length} documentos · página ${st.page+1} de ${pages}</span><span style="display:flex;gap:6px"><button id="prev" ${st.page?'':'disabled'}>Anterior</button><button id="next" ${st.page<pages-1?'':'disabled'}>Siguiente</button></span></div>`;
+  return h;
+}
+function renderAgg(rows,kind){
+  const m={};
+  rows.forEach(o=>{const k=kind==='rs'?o.rs:kind==='mes'?o.mes:o.pv||'—'; m[k]=m[k]||{x:kind==='pv'?o.rut:'',n:0,t:0,cn:0,ct:0,pn:0,pt:0,gn:0,sp:0,sf:0};const a=m[k];
+    a.n++;a.t+=o.tot; if(isPaidSF(o.ps))a.gn++; if(o.ps==='En Factoring')a.sf+=o.saldo||0; else a.sp+=o.saldo||0; if(o.sf==='Contabilizada'){a.cn++;a.ct+=o.tot} else if(o.sf==='Pendiente de contabilizar'){a.pn++;a.pt+=o.tot}});
+  const arr=Object.entries(m).sort((a,b)=>kind==='mes'?(a[0]<b[0]?-1:1):b[1].t-a[1].t);
+  const T=arr.reduce((s,[k,a])=>{for(const f of ['n','t','cn','ct','pn','pt','gn','sp','sf'])s[f]+=a[f];return s},{n:0,t:0,cn:0,ct:0,pn:0,pt:0,gn:0,sp:0,sf:0});
+  const row=(k,a,tot)=>`<tr${tot?' class="tot"':''}><td>${tot?'TOTAL':'<b>'+esc(kind==='mes'?mesNom(k):k)+'</b>'}</td>${kind==='pv'?`<td class="sub">${esc(a.x||'')}</td>`:''}<td class="num">${a.n}</td><td class="num">${fmt(a.t)}</td><td class="num">${a.cn}</td><td class="num">${fmt(a.ct)}</td><td class="num">${a.pn}</td><td class="num">${fmt(a.pt)}</td><td class="num">${a.n?Math.round(a.cn/a.n*100):0}%</td><td class="num">${a.gn}</td><td class="num">${fmt(a.sp)}</td><td class="num">${fmt(a.sf)}</td></tr>`;
+  return `<div class="tblwrap"><table style="min-width:980px"><thead><tr><th class="l">${kind==='rs'?'Razón social':kind==='mes'?'Mes de emisión':'Proveedor'}</th>${kind==='pv'?'<th class="l">RUT</th>':''}<th>Docs</th><th>Total recibido</th><th>Contab.</th><th>Monto contab.</th><th>Pend.</th><th>Monto pend.</th><th>% contab.</th><th>Pagadas</th><th>Saldo en Proveedores</th><th>Saldo en Factoring</th></tr></thead><tbody>
+  ${arr.length?arr.map(([k,a])=>row(k,a)).join('')+row('',T,1):'<tr><td colspan="12" class="empty">Sin datos para los filtros actuales</td></tr>'}</tbody></table></div>`;
+}
+function render(){
+  fillSelects(); renderChips(); renderBars();
+  const rows=filtered(false); renderKpis(rows);
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.v===st.view));
+  document.getElementById('view').innerHTML=st.view==='doc'?renderDoc(rows):renderAgg(rows,st.view);
+}
+
+// --- Export a Excel: respeta los filtros aplicados, hoja Detalle + hoja Resumen ---
+const EXP_COLS=[['rs','Razón social'],['t','Tipo'],['fo','Folio'],['pv','Proveedor'],['rut','RUT proveedor'],
+  ['fe','Emisión'],['fi','Recepción IConstruye'],['fv','Vencimiento'],['neto','Neto/exento'],['iva','IVA'],
+  ['tot','Total'],['cg','Centro de gestión'],['eic','Estado IConstruye'],['pago','Pago IConstruye'],
+  ['fpi','Fecha pago IC'],['fep','Fecha estimada pago IC'],['sf','Estado Softland'],['emp','Empresa'],
+  ['cpb','Comprobante'],['fc','Fecha contab.'],['cta','Cuenta'],['cc','Centro de costo'],
+  ['ps','Pago Softland'],['pagado','Pagado'],['saldo','Saldo'],['fact','Factoring'],['ces','Cesión SII'],
+  ['eg','Egresos'],['fpag','Pagos a factoring'],['ap','Aprobadores IC'],
+  ['oc','OC'],['refp','Referencia del proveedor'],['sii','Estado SII'],['siim','Motivo rechazo SII'],['siif','Fecha evento SII'],['siic','Última consulta SII']];
+function toXlsx(){
+  const rows=filtered(false);
+  const btn=document.getElementById('exportBtn'); btn.disabled=true; btn.textContent='Generando…';
+  try{
+    const head=EXP_COLS.map(([,t])=>t);
+    const body=rows.map(o=>EXP_COLS.map(([k])=>{
+      let v=o[k]; if(Array.isArray(v)) v=v.join(' | '); if(k==='sii'&&v==='—') v='';
+      if(['fe','fi','fv','fpi','fep','fc','siif'].includes(k)&&v) return new Date(v+'T00:00:00');
+      return v==null?'':v;
+    }));
+    const ws=XLSX.utils.aoa_to_sheet([head,...body]);
+    const n=rows.length;
+    for(let r=1;r<=n;r++){ const c=XLSX.utils.encode_cell({r,c:10}); if(ws[c]&&typeof ws[c].v==='number'){ws[c].z='#,##0'}
+      for(const col of [8,9,23,24]){ const cc=XLSX.utils.encode_cell({r,c:col}); if(ws[cc]&&typeof ws[cc].v==='number') ws[cc].z='#,##0'; }
+      for(const col of [5,6,7,14,15,19,34]){ const cc=XLSX.utils.encode_cell({r,c:col}); if(ws[cc]&&ws[cc].v instanceof Date) ws[cc].z='dd-mm-yyyy'; }
+    }
+    ws['!cols']=EXP_COLS.map(([k])=>({wch:k==='rs'||k==='pv'||k==='cg'||k==='cta'||k==='eg'||k==='fpag'?32:k==='pv'?30:16}));
+    ws['!freeze']={xSplit:0,ySplit:1};
+    ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:n,c:EXP_COLS.length-1}})};
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Detalle');
+
+    // Hoja resumen por razón social
+    const m={}; rows.forEach(o=>{m[o.rs]=m[o.rs]||{n:0,t:0,cn:0,pn:0,gn:0,sp:0,sf:0};const a=m[o.rs];
+      a.n++;a.t+=o.tot; if(isPaidSF(o.ps))a.gn++; if(o.ps==='En Factoring')a.sf+=o.saldo||0; else a.sp+=o.saldo||0;
+      if(o.sf==='Contabilizada') a.cn++; else if(o.sf==='Pendiente de contabilizar') a.pn++});
+    const resHead=['Razón social','Documentos','Total recibido','Contabilizados','Pendientes','% contab.','Pagadas','Saldo en Proveedores','Saldo en Factoring'];
+    const resBody=Object.entries(m).sort((a,b)=>b[1].t-a[1].t).map(([k,a])=>[k,a.n,a.t,a.cn,a.pn,a.n?a.cn/a.n:0,a.gn,a.sp,a.sf]);
+    const ws2=XLSX.utils.aoa_to_sheet([resHead,...resBody]);
+    for(let r=1;r<=resBody.length;r++){
+      for(const col of [2,7,8]){const cc=XLSX.utils.encode_cell({r,c:col}); if(ws2[cc])ws2[cc].z='#,##0'}
+      const pc=XLSX.utils.encode_cell({r,c:5}); if(ws2[pc])ws2[pc].z='0%';
+    }
+    ws2['!cols']=[{wch:36},{wch:12},{wch:16},{wch:14},{wch:14},{wch:12},{wch:12},{wch:20},{wch:20}];
+    XLSX.utils.book_append_sheet(wb,ws2,'Resumen');
+
+    const stamp=new Date().toISOString().slice(0,10);
+    const base=SCOPE?'Facturas_'+SCOPE.replace(/\s+/g,'_'):'Facturas_IConstruye_Softland';
+    XLSX.writeFile(wb,`${base}_${stamp}.xlsx`);
+  } finally { btn.disabled=false; btn.textContent='↓ Exportar a Excel'; }
+}
+
+const sinEmp=DATA.filter(o=>o.sf==='Sin empresa en Softland').length;
+document.getElementById('alert').innerHTML = sinEmp
+  ? `⚠ ${sinEmp} documentos de Activo Gerenciamiento Inmobiliario SpA quedan como «Sin empresa en Softland»: esa sociedad no está en la réplica Softland disponible en Supabase. Los comprobantes contabilizados después de la última carga de Softland no aparecen hasta la próxima.`
+  : '';
+if(!sinEmp) document.getElementById('alert').style.display='none';
+
+document.addEventListener('click',e=>{
+  if(e.target.id==='exportBtn'){ toXlsx(); return }
+  const b=e.target.closest('.barrow'); if(b){st.rs=st.rs===b.dataset.rs?'':b.dataset.rs;st.page=0;render();return}
+  const c=e.target.closest('.chip'); if(c){const g=c.dataset.g; st.sf.has(g)?st.sf.delete(g):st.sf.add(g); st.page=0; render(); return}
+  const t=e.target.closest('.tab'); if(t){st.view=t.dataset.v;render();return}
+  const th=e.target.closest('th[data-s]'); if(th){const k=th.dataset.s; st.dir=st.sort===k?-st.dir:(['tot','fe','fc'].includes(k)?-1:1); st.sort=k; render(); return}
+  if(e.target.id==='prev'){st.page--;render();return} if(e.target.id==='next'){st.page++;render();return}
+  const r=e.target.closest('tr.oc'); if(r){const k=r.dataset.k; st.open.has(k)?st.open.delete(k):st.open.add(k); render()}
+});
+document.addEventListener('keydown',e=>{const r=e.target.closest&&e.target.closest('tr.oc'); if(r&&(e.key==='Enter'||e.key===' ')){e.preventDefault(); r.click()}});
+document.getElementById('q').addEventListener('input',e=>{st.q=e.target.value;st.page=0;render()});
+if(!SCOPE) document.getElementById('rs').addEventListener('change',e=>{st.rs=e.target.value;st.page=0;render()});
+document.getElementById('mes').addEventListener('change',e=>{st.mes=e.target.value;st.page=0;render()});
+document.getElementById('tp').addEventListener('change',e=>{st.tp=e.target.value;st.page=0;render()});
+document.getElementById('psf').addEventListener('change',e=>{st.psf=e.target.value;st.page=0;render()});
+document.getElementById('pic').addEventListener('change',e=>{st.pic=e.target.value;st.page=0;render()});
+document.getElementById('sii').addEventListener('change',e=>{st.sii=e.target.value;st.page=0;render()});
+document.getElementById('eis').addEventListener('change',e=>{st.eis=e.target.value;st.page=0;render()});
+
+// --- fechas de actualización y notas dinámicas
+const fdh = t => t? fd(t.slice(0,10))+' '+(t.length>10?t.slice(11,16):''):'—';
+document.getElementById('metaTop').innerHTML=`IConstruye: DTE con emisión ${fd(META.desde)} → ${fd(META.corte)} · última recepción ${fd(META.ic_ultimo)}<br>Softland: comprobantes vigentes al ${fd(META.sf_ultimo)} · SII: última consulta ${fdh(META.sii_ultimo)}`;
+document.getElementById('notaUniverso').textContent=`Universo: DTE tipo 33, 34, 56 y 61 recibidos en IConstruye con fecha de emisión entre el ${fd(META.desde)} y el ${fd(META.corte)}, __UNIVERSO__. Se excluyen guías de despacho.`;
+const edad=Math.floor((HOY-new Date(META.generado.slice(0,10)))/864e5);
+const fr=document.getElementById('fresh');
+fr.innerHTML=`<b>Información actualizada el ${fdh(META.generado)}.</b> Softland e IConstruye se cargan una vez al día; el estado del SII se extrae con certificado digital y puede tener desfase respecto del SII en línea. Última consulta al SII: <b>${fdh(META.sii_ultimo)}</b>${META.sii_ultimo?'':' (aún no hay consultas cargadas)'}. Un documento recién emitido puede figurar «Sin consulta» o «Sin pronunciamiento» hasta la siguiente actualización.`+(edad>1?` <b class="motivo">Este informe tiene ${edad} días sin actualizarse.</b>`:'');
+if(edad>1) fr.classList.add('old');
+render();
+</script>
