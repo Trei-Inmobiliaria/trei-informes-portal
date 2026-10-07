@@ -1,0 +1,41 @@
+name: Informe de facturas (diario)
+
+# Genera el informe de facturas recibidas con los datos de IConstruye, Softland y los eventos del SII
+# (estos últimos los carga cada mañana el agente que corre en el PC de Control de Gestión) y publica los
+# HTML en el bucket privado de Supabase. NO sube artefactos ni imprime cifras: este registro es público.
+on:
+  schedule:
+    - cron: '30 11 * * *'   # 11:30 UTC = 08:30 hora de Chile (verano); 07:30 en invierno
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: informe-facturas
+  cancel-in-progress: false
+
+jobs:
+  generar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas psycopg2-binary openpyxl requests
+      - name: Generar informe
+        env:
+          IC_DB_URL: ${{ secrets.IC_DB_URL }}
+          SF_DB_URL: ${{ secrets.SF_DB_URL }}
+          TZ: America/Santiago
+        run: |
+          python herramientas/facturas/cruce_facturas_iconstruye_softland.py \
+            --plantilla herramientas/facturas/plantilla_facturas.html --salida salida --silencioso 2>/dev/null \
+            || { echo 'Falló la generación (el detalle se oculta porque este registro es público; ejecutar los mismos comandos en un PC)'; exit 1; }
+      - name: Publicar en Supabase (bucket privado)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python herramientas/facturas/publicar_en_supabase.py salida/Facturas_Recibidas.html salida/Facturas_Recibidas_VCB.html

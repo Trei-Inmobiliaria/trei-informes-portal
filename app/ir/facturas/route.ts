@@ -21,10 +21,11 @@ const ARCHIVOS: Record<"full" | "vcb", string> = {
   vcb: "facturas-recibidas-2026-vcb.html",
 };
 
-// Fuente privada opcional: si FACTURAS_FUENTE_URL está definida (carpeta/bucket privado, sin barra final),
-// el HTML diario (Facturas_Recibidas.html y Facturas_Recibidas_VCB.html, generados por
-// herramientas/facturas) se lee desde ahí con FACTURAS_FUENTE_TOKEN como Bearer. Así los datos
-// no se versionan en esta repo pública. Si no está definida o falla, se usa el archivo de /privado.
+// Fuente privada: bucket privado de Supabase Storage donde un proceso diario (GitHub Actions) deja
+// Facturas_Recibidas.html y Facturas_Recibidas_VCB.html. Variables de entorno en Vercel:
+//   FACTURAS_FUENTE_URL   https://<ref>.supabase.co/storage/v1/object/informes-privados
+//   FACTURAS_FUENTE_TOKEN llave service_role del proyecto (secreta, solo servidor)
+// Si no están definidas o la lectura falla, se usa el archivo de /privado (versión anterior).
 const REMOTOS: Record<"full" | "vcb", string> = {
   full: "Facturas_Recibidas.html",
   vcb: "Facturas_Recibidas_VCB.html",
@@ -32,11 +33,11 @@ const REMOTOS: Record<"full" | "vcb", string> = {
 
 async function htmlRemoto(pedido: "full" | "vcb"): Promise<string | null> {
   const base = process.env.FACTURAS_FUENTE_URL;
-  if (!base) return null;
+  const token = process.env.FACTURAS_FUENTE_TOKEN;
+  if (!base || !token) return null;
   try {
-    const token = process.env.FACTURAS_FUENTE_TOKEN;
     const r = await fetch(`${base.replace(/\/$/, "")}/${REMOTOS[pedido]}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: { Authorization: `Bearer ${token}`, apikey: token },
       cache: "no-store",
     });
     return r.ok ? await r.text() : null;

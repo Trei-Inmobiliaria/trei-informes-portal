@@ -7,3 +7,9 @@
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+
+# Python
+__pycache__/
+*.pyc
+salida/
+agente_sii.log

@@ -499,6 +499,7 @@ def main():
     ap.add_argument('--corte', default=str(hoy.date()), help='fecha de corte para vencidos; por defecto hoy')
     ap.add_argument('--plantilla', help='HTML del informe con los marcadores __DATA__, __SCOPE__, __META__, __TITULO__, __MARCA__, __H1__, __UNIVERSO__')
     ap.add_argument('--salida', default='.', help='carpeta de salida')
+    ap.add_argument('--silencioso', action='store_true', help='no imprime cifras del informe (para ejecuciones con registro público, como GitHub Actions)')
     a = ap.parse_args()
     os.makedirs(a.salida, exist_ok=True)
 
@@ -514,6 +515,8 @@ def main():
             open(os.path.join(a.salida, nombre), 'w', encoding='utf-8', newline='\n').write(render(a.plantilla, out, meta, nombre))
             print('Escrito', nombre)
 
+    if a.silencioso:
+        print('Informe generado'); return
     from collections import Counter
     print(f"{len(out)} documentos · {a.desde} → {a.corte}")
     print('Contabilización:', dict(Counter(o['sf'] for o in out)))
