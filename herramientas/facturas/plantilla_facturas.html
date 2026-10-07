@@ -78,7 +78,8 @@ tr.det td{background:#fbfbfc;padding:14px 18px 18px}
 .controls{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
 .controls input{grid-column:span 4;order:1;width:100%}
 .controls #clearBtn{order:2}.controls .btn-export{order:3;justify-content:center}
-.controls select{order:4;width:100%}
+.controls label.f{order:4;display:grid;gap:3px;min-width:0;font:700 9.5px var(--f);letter-spacing:.8px;text-transform:uppercase;color:var(--t4)}
+.controls label.f select{width:100%;font:400 13px var(--f);letter-spacing:0;text-transform:none}
 @media (max-width:900px){.controls{grid-template-columns:1fr 1fr}.controls input{grid-column:1/-1}}
 @media (max-width:900px){table{table-layout:auto;min-width:900px}}
 .lines th{cursor:default;background:#333}
@@ -130,12 +131,12 @@ td.neg{color:var(--bad)}
   <section class="panel">
     <div class="controls" style="margin-bottom:14px">
       <input id="q" type="search" placeholder="Buscar folio, proveedor, RUT, obra, cuenta, comprobante…" aria-label="Buscar">
-      <select id="mes" aria-label="Mes de emisión"></select>
-      <select id="rs" aria-label="Razón social"></select>
-      <select id="sii" aria-label="Estado SII"></select>
-      <select id="eis" aria-label="Estado IConstruye"></select>
-      <select id="cf" aria-label="Contabilización Softland"></select>
-      <select id="psf" aria-label="Pago Softland"></select>
+      <label class="f">Mes de emisión<select id="mes" aria-label="Mes de emisión"></select></label>
+      <label class="f">Empresa<select id="rs" aria-label="Razón social"></select></label>
+      <label class="f">Estado SII<select id="sii" aria-label="Estado SII"></select></label>
+      <label class="f">Estado IConstruye<select id="eis" aria-label="Estado IConstruye"></select></label>
+      <label class="f">Softland<select id="cf" aria-label="Contabilización Softland"></select></label>
+      <label class="f">Pago<select id="psf" aria-label="Pago Softland"></select></label>
       <button id="clearBtn" class="btn-ghost" hidden>Limpiar filtros</button>
       <button id="exportBtn" class="btn-export" title="Exporta la vista filtrada actual a Excel">↓ Exportar a Excel</button>
     </div>
@@ -239,25 +240,25 @@ function fillSelects(){
   const ms=[...new Set(DATA.map(o=>o.mes))].filter(Boolean).sort();
   document.getElementById('mes').innerHTML=`<option value="">Todo ${ANIO} (ene–${MES_CORTO})</option>`+ms.map(m=>`<option value="${m}"${m===st.mes?' selected':''}>${mesNom(m)}</option>`).join('');
   const rsSel=document.getElementById('rs');
-  if(SCOPE){ rsSel.style.display='none'; }
+  if(SCOPE){ rsSel.closest('label').style.display='none'; }
   else{
     const rss=[...new Set(DATA.map(o=>o.rs))].sort();
-    rsSel.innerHTML='<option value="">Todas las razones sociales</option>'+rss.map(r=>`<option${r===st.rs?' selected':''}>${esc(r)}</option>`).join('');
+    rsSel.innerHTML='<option value="">Todas</option>'+rss.map(r=>`<option${r===st.rs?' selected':''}>${esc(r)}</option>`).join('');
   }
   const opt=(arr,cur,todos)=>`<option value="">${todos}</option>`+arr.map(r=>`<option${r===cur?' selected':''}>${esc(r)}</option>`).join('');
-  document.getElementById('sii').innerHTML=opt(SIIS,st.sii,'Estado SII: todos');
-  document.getElementById('eis').innerHTML=opt(EIS,st.eis,'Estado IConstruye: todos');
-  document.getElementById('cf').innerHTML=opt(SF,st.cf,'Softland: todos');
-  document.getElementById('psf').innerHTML=opt(PS,st.psf,'Pago: todos');
+  document.getElementById('sii').innerHTML=opt(SIIS,st.sii,'Todos');
+  document.getElementById('eis').innerHTML=opt(EIS,st.eis,'Todos');
+  document.getElementById('cf').innerHTML=opt(SF,st.cf,'Todos');
+  document.getElementById('psf').innerHTML=opt(PS,st.psf,'Todos');
   document.getElementById('clearBtn').hidden=!(st.mes||st.rs||st.sii||st.eis||st.cf||st.psf||st.q);
 }
-const COLS=[['fe','Documento',1,11],['oc','OC / referencia',1,13],['rs','Empresa / obra',1,15],['pv','Proveedor',1,17],['tot','Total CLP',0,9],['sii','Estado SII / IConstruye',1,13],['sf','Softland',1,12],['ps','Pago',1,10]];
+const COLS=[['fe','Documento',1,10],['oc','OC / referencia',1,12],['rs','Empresa / obra',1,13],['pv','Proveedor',1,15],['tot','Total CLP',0,8],['sii','Estado SII',1,12],['eics','Estado IConstruye',1,10],['sf','Softland',1,11],['ps','Pago',1,9]];
 function renderDoc(rows){
   rows=[...rows].sort((a,b)=>{const x=a[st.sort]??'',y=b[st.sort]??'';return (x>y?1:x<y?-1:0)*st.dir});
   const pages=Math.max(1,Math.ceil(rows.length/PAGE)); st.page=Math.min(st.page,pages-1);
   const sl=rows.slice(st.page*PAGE,(st.page+1)*PAGE);
   let h=`<div class="tblwrap"><table><colgroup>${COLS.map(c=>`<col style="width:${c[3]}%">`).join('')}</colgroup><thead><tr>${COLS.map(([k,t,l])=>`<th class="${l?'l':''}" data-s="${k}">${t}${st.sort===k?(st.dir>0?' ↑':' ↓'):''}</th>`).join('')}</tr></thead><tbody>`;
-  if(!sl.length) h+='<tr><td colspan="8" class="empty">No hay documentos que coincidan con la búsqueda</td></tr>';
+  if(!sl.length) h+='<tr><td colspan="9" class="empty">No hay documentos que coincidan con la búsqueda</td></tr>';
   sl.forEach(o=>{const k=key(o), op=st.open.has(k);
     h+=`<tr class="oc${op?' open':''}" data-k="${esc(k)}" tabindex="0" aria-expanded="${op}">
       <td><div class="ocn">${op?'▾':'▸'} ${o.fo}</div><div class="sub">${esc(o.t)} · ${fd(o.fe)}</div></td>
@@ -265,10 +266,11 @@ function renderDoc(rows){
       <td>${esc(o.rs)}<div class="sub">${esc(o.cg||'—')}</div></td>
       <td>${esc(o.pv)}<div class="sub">${esc(o.rut)}</div></td>
       <td class="num${o.tot<0?' neg':''}">${fmt(o.tot)}</td>
-      <td>${o.sii==='—'?'<span class="sub">SII: —</span>':`<span class="pill ${siiPill(o.sii)}">${esc(o.sii)}</span>`}${o.siim?`<div class="sub motivo">${esc(o.siim)}</div>`:''}<div style="margin-top:4px">${o.eic?`<span class="pill ${eisPill(o.eics)}">${esc(o.eics)}</span>`:'<span class="sub">IC: solo bandeja DTE</span>'}</div></td>
+      <td>${o.sii==='—'?'<span class="sub">—</span>':`<span class="pill ${siiPill(o.sii)}">${esc(o.sii)}</span>`}${o.siim?`<div class="sub motivo">${esc(o.siim)}</div>`:''}</td>
+      <td>${o.eic?`<span class="pill ${eisPill(o.eics)}">${esc(o.eics)}</span>`:'<span class="sub">Solo bandeja DTE</span>'}</td>
       <td><span class="pill ${pill(o.sf)}">${esc(o.sf==='Pendiente de contabilizar'?'Pendiente':o.sf)}</span>${o.fc?`<div class="sub">${fd(o.fc)} · Cpbte ${esc(o.cpb)}</div>`:''}${o.age!=null?`<div class="age${o.age>15?' old':''}">${o.age} días</div>`:''}</td>
       <td>${o.ps==='Rechazada en SII'?'<span class="sub">—</span>':`<span class="pill ${psPill(o.ps)}">${esc(o.ps)}</span>`}${o.egn.length?`<div class="sub">Egreso ${esc(o.egn.join(', '))}</div>`:''}${(!o.egn.length&&o.trs)?`<div class="sub">Traspaso ${esc(o.trs.map(x=>x.split(' · ')[0]).join(', '))}</div>`:''}${o.saldo?`<div class="sub">Saldo ${fmt(o.saldo)}</div>`:''}${o.fact?`<div class="sub">${esc(o.fact)}</div>`:''}${o.cesx?'<div class="sub" style="color:var(--bad)">Cedida SII sin factoring</div>':''}${difPago(o)?'<div class="sub" style="color:var(--bad)">≠ IConstruye: '+esc(o.pago)+'</div>':''}</td></tr>`;
-    if(op){h+=`<tr class="det"><td colspan="8"><div class="detgrid">
+    if(op){h+=`<tr class="det"><td colspan="9"><div class="detgrid">
       <div><span>Recepción IConstruye</span>${fd(o.fi)}</div>
       <div><span>Vencimiento</span>${fd(o.fv)}</div>
       <div><span>Neto / exento</span>${fmt(o.neto)}</div>
