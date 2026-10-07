@@ -32,8 +32,12 @@ assert por[618]['sii'] == 'Rechazada' and por[618]['siim'] == 'Mal referencia OC
 assert por[618]['sf'] == 'Rechazada en SII' and por[618]['ps'] == 'Rechazada en SII', 'no debe ser pendiente de contabilizar'
 assert por[1324]['sii'] == 'Rechazada' and por[1324]['refp'] == 'Contrato 1700-30', por[1324]
 assert por[900]['sii'] == 'Aceptada' and por[900]['oc'] == '1000-19' and por[900]['sf'] == 'Pendiente de contabilizar'
-assert por[901]['sii'] == 'Sin pronunciamiento'
+assert por[901]['sii'] == 'Sin pronunciamiento'   # recibida hace 2 días: aún dentro del plazo de 8
 assert por[902]['sii'] == 'Sin consulta'
+# vencido el plazo de 8 días sin eventos ⇒ aceptación tácita
+viejo = dte(904, '55555555-5'); viejo['fi'] = pd.Timestamp('2026-09-20'); viejo['fe'] = pd.Timestamp('2026-09-19')
+sii_v = pd.concat([sii, pd.DataFrame([ev('55555555-5', 904, 'SIN', 'Sin eventos', None)])], ignore_index=True)
+assert cr.cruzar(pd.DataFrame([viejo]), sf, pay, opn, f9, '2026-10-07', sii_v)[0]['sii'] == 'Aceptada (Aut)'
 # rechazo manual en IConstruye NO altera el estado SII
 ic2 = pd.DataFrame([dte(903, '44444444-4', est='Factura Documento Rechazado')])
 o2 = cr.cruzar(ic2, sf, pay, opn, f9, '2026-10-07', sii)[0]

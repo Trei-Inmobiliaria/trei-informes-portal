@@ -141,7 +141,7 @@ td.neg{color:var(--bad)}
   <div class="alert" id="alert"></div>
   <div class="nota">
     <div id="notaUniverso"></div>
-    <div><b>Estado SII</b> (fuente: consulta de eventos al SII con certificado digital): «Rechazada» = el receptor rechazó el documento por la regla de aceptación (reclamo RCD); el motivo mostrado es «Mal referencia OC-EEPP». «Aceptada» = el SII registra aceptación (ACD/ERM). «Sin pronunciamiento» = consultado sin eventos. «Sin consulta» = aún no consultado. Los rechazos manuales del flujo de aprobación de IConstruye no alteran este estado: se ven en «Estado IConstruye». Notas de crédito y débito no se consultan.</div>
+    <div><b>Estado SII</b> (fuente: consulta de eventos al SII con certificado digital): «Rechazada» = el receptor rechazó el documento por la regla de aceptación (reclamo RCD); el motivo mostrado es «Mal referencia OC-EEPP». «Aceptada» = el SII registra aceptación (ACD/ERM). «Aceptada (Aut)» = sin eventos en el SII y vencido el plazo de 8 días corridos desde la recepción (aceptación tácita, Ley 19.983). «Sin pronunciamiento» = consultado sin eventos y aún dentro del plazo. «Sin consulta» = aún no consultado. Los rechazos manuales del flujo de aprobación de IConstruye no alteran este estado: se ven en «Estado IConstruye». Notas de crédito y débito no se consultan.</div>
     <div><b>OC / referencia</b>: la OC proviene de las recepciones asociadas a la factura en IConstruye; «El proveedor refirió» muestra el código tal como lo informó el proveedor en el DTE (OC, contrato, etc.), útil para detectar referencias incompletas, por ejemplo un contrato «1700-30» cuando corresponde «1700-30-X».</div>
     <div>Documentos rechazados en el SII sin contabilizar se muestran como «Rechazada en SII»: no cuentan como «Pendiente de contabilizar» ni en la antigüedad.</div>
     <div>Cruce con Softland por empresa + tipo de documento + folio + RUT del proveedor, contra comprobantes vigentes (cpbest = V) desde nov-2025. Cuando el monto del pasivo en Softland difiere del total del DTE, el detalle muestra el monto Softland.</div>
@@ -161,9 +161,9 @@ const mesNom=m=>MESES[+m.slice(5,7)-1]+' '+m.slice(0,4);
 const SF = ['Contabilizada','Pendiente de contabilizar','Rechazada en SII','Provisoria / nula','Sin empresa en Softland'];
 const EIC_MAP={'Aprobado':'Aprobada','Ingresado':'Ingresada','Cancelado':'Cancelada','Rechazado':'Rechazada','Aprobada Parcialmente':'Aprobada parcialmente','Espera Aprobación':'Espera aprobación'};
 const EIS=['Ingresada','Espera aprobación','Aprobada parcialmente','Aprobada','Rechazada','Cancelada','Sin registro'];
-const SIIS=['Rechazada','Aceptada','Sin pronunciamiento','Sin consulta'];
+const SIIS=['Rechazada','Aceptada','Aceptada (Aut)','Sin pronunciamiento','Sin consulta'];
 const eisPill=e=>e==='Aprobada'?'p-ok':(e==='Rechazada'||e==='Cancelada')?'p-bad':e==='Sin registro'?'p-neu':'p-warn';
-const siiPill=e=>e==='Aceptada'?'p-ok':e==='Rechazada'?'p-bad':'p-neu';
+const siiPill=e=>e.startsWith('Aceptada')?'p-ok':e==='Rechazada'?'p-bad':'p-neu';
 const pill = e => e==='Contabilizada'?'p-ok':e==='Pendiente de contabilizar'?'p-warn':e==='Rechazada en SII'?'p-bad':'p-neu';
 const fmt = n => n==null?'':Math.round(n).toLocaleString('es-CL');
 const fmtM = n => (n/1e6).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1});

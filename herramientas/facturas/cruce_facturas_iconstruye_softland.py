@@ -17,7 +17,8 @@ Qué hace
    Pago Softland:   Pagada (egreso) / Pagada a factoring / En Factoring / Cancelada por traspaso /
                     Pagada sin referencia / Pago parcial / En Proveedores / Sin contabilizar / Nota de crédito
 4. Agrega el estado del SII (eventos de reclamo/aceptación que carga agente_sii_eventos.py en
-   iconstruye.sii_eventos_reclamo): Rechazada / Aceptada / Sin pronunciamiento / Sin consulta. El SII es la guía;
+   iconstruye.sii_eventos_reclamo): Rechazada / Aceptada / Aceptada (Aut) / Sin pronunciamiento / Sin consulta.
+   «Aceptada (Aut)» = sin eventos del SII y vencido el plazo de 8 días corridos desde la recepción (aceptación tácita). El SII es la guía;
    los rechazos manuales del flujo de aprobación de IConstruye NO afectan este estado. El motivo se deduce de la
    regla de aceptación: evento RCD ⇒ «Mal referencia OC-EEPP».
 5. Muestra la OC (vía recepciones) y lo que el proveedor referenció en el DTE (código 801 OC, 803 Contrato/EEPP…).
@@ -237,6 +238,7 @@ def _ddmmyyyy(s):
 
 REF_SII = {'801': 'OC', '802': 'Nota de pedido', '803': 'Contrato', '52': 'Guía', '33': 'Factura', '34': 'Factura exenta',
            '56': 'Nota de débito', '61': 'Nota de crédito'}
+PLAZO_RECLAMO_DIAS = 8   # días corridos para reclamar un DTE (Ley 19.983)
 MOTIVO_RCD = 'Mal referencia OC-EEPP'   # única regla de rechazo vigente (reclamo de contenido, RCD)
 ETIQ_RECHAZO = {'RCD': MOTIVO_RCD, 'RFP': 'Reclamo por falta parcial de mercaderías', 'RFT': 'Reclamo por falta total de mercaderías'}
 
@@ -362,6 +364,11 @@ def cruzar(ic, sf, pay, opn, f9, corte, sii=None):
         es = est_sii.get((r.tax_id_emisor, int(r.tipo), int(r.folio), r.tax_id_receptor))
         if r.tipo in ('33', '34', '43'):
             o.update(es or dict(sii='Sin consulta'))
+            # Ley 19.983: sin reclamo dentro de 8 días corridos desde la recepción, la factura se da por aceptada
+            if o['sii'] == 'Sin pronunciamiento':
+                rec = _d(r.fi) or _d(r.fe)
+                if rec and (date.fromisoformat(corte) - date.fromisoformat(rec)).days > PLAZO_RECLAMO_DIAS:
+                    o['sii'] = 'Aceptada (Aut)'
         # rechazada por regla de aceptación en el SII: no es «pendiente de contabilizar» ni entra a la antigüedad
         if o.get('sii') == 'Rechazada' and r.est_sf == 'Pendiente de contabilizar':
             o['sf'] = 'Rechazada en SII'
