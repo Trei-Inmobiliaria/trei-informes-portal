@@ -7,6 +7,9 @@ const nextConfig = {
     // que es la única que los lee, después de validar permiso.
     outputFileTracingIncludes: {
       "/ir/facturas": ["./privado/**/*"],
+      // El informe comercial lee su HTML y el plano-raices desde Supabase
+      // Storage; si falla, cae al archivo versionado en /privado/comercial/.
+      "/ir/comercial/[[...rest]]": ["./privado/**/*"],
     },
   },
 };
