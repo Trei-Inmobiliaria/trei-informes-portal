@@ -1,31 +1,39 @@
+import { createHmac } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { permisoActual } from "@/lib/accesos";
 
-// Puente transparente al proyecto Supabase del Informe Comercial.
+// Puente al proyecto Supabase del Informe Comercial.
 //
 // El HTML del informe hace sus fetch como si Supabase fuera un endpoint local
 // ("/informe_ventas/db/rest/v1/<tabla>?..." en la versión de trei.cl; acá lo
 // servimos reescrito a "/api/comercial/db/..."). Esta ruta recibe esas requests
 // y las reenvía al Supabase real agregando los headers de autenticación en el
-// servidor — la service_role nunca viaja al navegador.
+// servidor — ninguna llave viaja al navegador.
 //
-// Reemplaza el proxy PHP que servía trei.cl/informe_ventas/db. El modelo de
-// seguridad es el mismo: el gate de Entra + Gestor de Accesos del portal filtra
-// quién puede llegar hasta acá; una vez adentro, el proxy acepta tanto reads
-// como writes (el informe hace POST a `proyeccion_reservas`, por ejemplo).
+// Modelo de seguridad — importante:
+//   La base tiene RLS activa en todas las tablas del informe. Las políticas
+//   llaman a mi_email() (que lee del claim "email" del JWT), rol_efectivo()
+//   (RBAC via public.informe_usuario) y mis_proyectos_ext() (filtro por
+//   proyecto via public.informe_usuario_proyecto). Es decir, la base decide
+//   qué filas devolver según QUIÉN está preguntando — distintos usuarios ven
+//   distintos proyectos por diseño.
+//
+//   Para que RLS se aplique, tenemos que firmar un JWT user-scoped con el
+//   email de la sesión y pasarlo como Bearer. Si en vez usamos la service_role,
+//   PostgREST salta las RLS y TODOS ven TODO — exactamente el bug que estamos
+//   evitando. Por eso COMERCIAL_SB_JWT_SECRET es obligatoria.
 //
 // Env vars (Vercel → Portal):
-//   COMERCIAL_SB_URL   https://<ref>.supabase.co  (sin /rest/v1 al final)
-//   COMERCIAL_SB_KEY   service_role del proyecto Supabase (secreta, server-side)
+//   COMERCIAL_SB_URL         https://<ref>.supabase.co  (sin /rest/v1 al final)
+//   COMERCIAL_SB_JWT_SECRET  JWT secret del proyecto Supabase (Settings → API)
+//   COMERCIAL_SB_KEY         anon key del proyecto (apikey del gateway de Supabase)
+//                            — service_role también pasa el gateway, pero
+//                            preferimos anon por el principio de menor privilegio.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Métodos que acepta el HTML del informe. GET para lecturas (PostgREST), POST
-// para inserts (proyeccion_reservas), DELETE para borrar manual overrides
-// (funnel_operaciones_manual), PATCH por si en el futuro se agrega una
-// edición en vivo. HEAD por si algún navegador lo intenta antes del GET.
 const METODOS_PERMITIDOS = new Set([
   "GET",
   "POST",
@@ -35,42 +43,82 @@ const METODOS_PERMITIDOS = new Set([
   "OPTIONS",
 ]);
 
-// Headers que el frontend puede pasar y queremos propagar a Supabase. Los
-// de autenticación (apikey, authorization) los pone el servidor acá; los de
+// Headers que el frontend puede pasar y queremos propagar a Supabase. Los de
+// autenticación (apikey, authorization) los pone el servidor; los de
 // cookie/host no tienen sentido reenviarlos.
 const HEADERS_REENVIADOS = [
   "accept",
   "accept-encoding",
   "content-type",
-  "prefer",   // PostgREST: `Prefer: count=exact`, `return=representation`, ...
+  "prefer",   // PostgREST: `Prefer: count=exact`, `return=representation`, …
   "range",    // PostgREST: paginación por rango.
   "range-unit",
 ];
 
+// Codificación base64url (sin padding) como pide el JWT.
+function b64url(buf: Buffer): string {
+  return buf
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+// Firma un JWT HS256 con el email del usuario y role=authenticated. El TTL
+// corto (60s) alcanza para la vida del fetch y limita la ventana si llegara a
+// filtrarse. El claim "email" es el que lee public.mi_email() en Postgres.
+function firmarJwtUsuario(email: string, secret: string): string {
+  const header = { alg: "HS256", typ: "JWT" };
+  const ahora = Math.floor(Date.now() / 1000);
+  const payload = {
+    role: "authenticated",
+    email,
+    iat: ahora,
+    exp: ahora + 60,
+  };
+  const encHeader = b64url(Buffer.from(JSON.stringify(header)));
+  const encPayload = b64url(Buffer.from(JSON.stringify(payload)));
+  const firmable = `${encHeader}.${encPayload}`;
+  const firma = b64url(createHmac("sha256", secret).update(firmable).digest());
+  return `${firmable}.${firma}`;
+}
+
 async function proxy(request: NextRequest, segmentos: string[]): Promise<NextResponse> {
   const session = await auth();
-  const email = session?.user?.email;
+  const email = session?.user?.email?.toLowerCase();
   if (!email) {
     return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
   }
 
+  // Primer filtro: Gestor de Accesos del portal. Decide si la persona puede
+  // llegar al informe comercial. El filtro FINO por proyecto lo aplica RLS
+  // adentro de Postgres (ver comentario de modelo de seguridad arriba).
   const permiso = await permisoActual(email);
   if (!permiso.informes.includes("comercial")) {
     return NextResponse.json({ error: "sin-permiso" }, { status: 403 });
   }
 
   const base = process.env.COMERCIAL_SB_URL;
-  const key = process.env.COMERCIAL_SB_KEY;
-  if (!base || !key) {
+  const apiKey = process.env.COMERCIAL_SB_KEY;
+  const jwtSecret = process.env.COMERCIAL_SB_JWT_SECRET;
+  if (!base || !apiKey || !jwtSecret) {
+    // Fail cerrado: si falta el JWT secret y usáramos service_role, se saltan
+    // las RLS y todos verían todos los proyectos. Mejor devolver 500 ruidoso
+    // que servir datos de más.
+    const faltan = [
+      !base && "COMERCIAL_SB_URL",
+      !apiKey && "COMERCIAL_SB_KEY",
+      !jwtSecret && "COMERCIAL_SB_JWT_SECRET",
+    ].filter(Boolean);
     return NextResponse.json(
-      { error: "puente-no-configurado" },
+      { error: "puente-no-configurado", faltan },
       { status: 500 }
     );
   }
 
   // Reconstrucción de la URL destino: /api/comercial/db/<lo que venga>?qs
   // → <COMERCIAL_SB_URL>/<lo que venga>?qs. Se preserva la query string
-  // tal cual la mandó el browser (PostgREST la usa para select/filter/order).
+  // tal cual (PostgREST la usa para select/filter/order).
   const sufijo = segmentos.map(encodeURIComponent).join("/");
   const destino = new URL(
     `${base.replace(/\/$/, "")}/${sufijo}${request.nextUrl.search}`
@@ -81,15 +129,17 @@ async function proxy(request: NextRequest, segmentos: string[]): Promise<NextRes
     const v = request.headers.get(nombre);
     if (v) headers.set(nombre, v);
   }
-  headers.set("apikey", key);
-  headers.set("Authorization", `Bearer ${key}`);
+  // apikey pasa el gateway de Supabase (Kong). El Authorization: Bearer <JWT>
+  // es lo que PostgREST usa para setear request.jwt.claims y, por lo tanto, lo
+  // que las RLS leen con mi_email() y rol_efectivo().
+  headers.set("apikey", apiKey);
+  headers.set("Authorization", `Bearer ${firmarJwtUsuario(email, jwtSecret)}`);
 
   const init: RequestInit = {
     method: request.method,
     headers,
     cache: "no-store",
   };
-  // GET/HEAD no llevan body; para los demás, se pasa el stream del request.
   if (!["GET", "HEAD"].includes(request.method)) {
     init.body = await request.arrayBuffer();
   }
