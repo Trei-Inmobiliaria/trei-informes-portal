@@ -161,6 +161,54 @@ footer .sep{color:var(--borde-fuerte)}
 }
 .login-foot{padding:16px;text-align:center;font-size:11px;color:var(--gris-claro)}
 
+/* ---------- Modal de confirmación antes de iniciar sesión ---------- */
+.login-modal-backdrop{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(17,17,17,.55);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px 16px;
+  animation:login-modal-fade .18s ease-out;
+}
+.login-modal{
+  width:100%;max-width:440px;background:var(--carta);
+  border:1px solid var(--borde);border-radius:14px;
+  box-shadow:var(--sombra-alta);
+  padding:28px 28px 22px;text-align:left;
+  animation:login-modal-pop .22s cubic-bezier(.2,.9,.3,1.1);
+}
+.login-modal h2{
+  font-size:17px;margin:0 0 14px;letter-spacing:-.2px;color:var(--tinta);
+  padding-bottom:12px;border-bottom:1px solid var(--borde);
+}
+.login-modal-body{margin:0 0 20px}
+.login-modal-body p{margin:0 0 10px;font-size:13.5px;line-height:1.55;color:var(--tinta)}
+.login-modal-body p:last-child{margin-bottom:0}
+.login-modal-body strong{color:var(--rojo);font-weight:600}
+.login-modal-actions{
+  display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;
+}
+.login-modal-actions .btn-msft{width:auto;flex:1 1 auto;min-width:200px}
+.btn-msft--modal{padding:11px 16px;font-size:13.5px}
+.btn-ghost{
+  background:transparent;color:var(--gris);
+  border:1px solid var(--borde-fuerte);border-radius:9px;
+  font-family:inherit;font-size:13.5px;font-weight:500;
+  padding:10px 16px;cursor:pointer;transition:background .15s,color .15s;
+}
+.btn-ghost:hover{background:var(--fondo);color:var(--tinta)}
+.btn-ghost:disabled,.btn-msft:disabled{opacity:.6;cursor:not-allowed}
+@keyframes login-modal-fade{from{opacity:0}to{opacity:1}}
+@keyframes login-modal-pop{
+  from{opacity:0;transform:translateY(6px) scale(.98)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@media(max-width:480px){
+  .login-modal{padding:22px 20px 18px}
+  .login-modal-actions{flex-direction:column-reverse;align-items:stretch}
+  .login-modal-actions .btn-ghost,
+  .login-modal-actions .btn-msft{width:100%;min-width:0}
+}
+
 /* ---------- Pestañas (selector de vistas) ---------- */
 .tabs{display:flex;gap:4px;margin-left:clamp(0px,2vw,18px);align-self:stretch;overflow-x:auto}
 .tabs a{
