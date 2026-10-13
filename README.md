@@ -33,8 +33,13 @@ de Accesos.
 - El HTML original consulta `/informe_ventas/db`; esa URL se reescribe al vuelo
   a `/api/comercial/db` para que el navegador golpee este mismo proyecto.
 - `app/api/comercial/db/[...path]/route.ts` reemplaza al proxy PHP que vivía en
-  trei.cl. Es un reenvío transparente al Supabase REST del pipeline con la
-  `service_role` agregada en el servidor (nunca viaja al navegador).
+  trei.cl. Firma un JWT HS256 con el email de la sesión (`role: authenticated`)
+  y lo pasa como `Bearer` a Supabase REST, para que las RLS de la base
+  (`mi_email()`, `rol_efectivo()`, `mis_proyectos_ext()`) filtren por quién
+  pregunta — distintos usuarios ven distintos proyectos por diseño, igual que
+  en el hosting viejo. Si falta `COMERCIAL_SB_JWT_SECRET`, el puente devuelve
+  500 a propósito: usar `service_role` saltaría las RLS y daría a todos acceso
+  a todo.
 - La fuente de verdad del HTML son los archivos que el pipeline
   `bbdd-planok-trei` sube cada día a Supabase Storage. El route handler cae al
   archivo versionado en `/privado/comercial/` si Supabase no responde.
