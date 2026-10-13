@@ -1,11 +1,13 @@
 # Portal de Informes — Trei
 
 Portal-selector (Next.js + Auth.js) que gatea con **Microsoft Entra ID** el acceso
-a los tres informes financieros de Trei y deja elegir a cuál entrar:
+a los informes financieros de Trei y deja elegir a cuál entrar:
 
-- **Control de Deuda** → `https://debt-control-rouge.vercel.app/`
+- **Informe Comercial** → `/ir/comercial` (ya dentro del portal; antes vivía en `trei.cl/informe_ventas/`)
 - **Cobranza** → `https://debt-control-rouge.vercel.app/cobranza`
 - **Tesorería** → `https://debt-control-rouge.vercel.app/tesoreria/posicion-caja`
+- **Contabilidad** → `https://reporteria-contabilidad.vercel.app/`
+- **Facturas Recibidas 2026** → `/ir/facturas`
 
 Se sirve en `https://trei-informes.app`.
 
@@ -16,9 +18,26 @@ Se sirve en `https://trei-informes.app`.
 3. Cae en el selector y ve solo los informes que tiene asignados. (Cada módulo mantiene por ahora su
    propio login; unificarlos bajo Entra es el paso siguiente.)
 
-Reutiliza la **misma app de Entra** del informe comercial (`trei-informe-auth`):
-no se crea una app nueva. La regla de correos de este portal es independiente de
-la del comercial.
+Reutiliza la **misma app de Entra** (`trei-informe-auth`): no se crea una app
+nueva.
+
+## Informe Comercial (`/ir/comercial`)
+
+Antes vivía en `trei.cl/informe_ventas/` detrás de su propio Cloudflare Worker
+de Entra; ahora vive dentro del portal, bajo el mismo login y el mismo Gestor
+de Accesos.
+
+- `app/ir/comercial/[[...rest]]/route.ts` sirve el HTML, el plano del loteo de
+  Raíces y el funnel de escrituración, después de validar que la sesión tenga
+  el permiso `comercial`.
+- El HTML original consulta `/informe_ventas/db`; esa URL se reescribe al vuelo
+  a `/api/comercial/db` para que el navegador golpee este mismo proyecto.
+- `app/api/comercial/db/[...path]/route.ts` reemplaza al proxy PHP que vivía en
+  trei.cl. Es un reenvío transparente al Supabase REST del pipeline con la
+  `service_role` agregada en el servidor (nunca viaja al navegador).
+- La fuente de verdad del HTML son los archivos que el pipeline
+  `bbdd-planok-trei` sube cada día a Supabase Storage. El route handler cae al
+  archivo versionado en `/privado/comercial/` si Supabase no responde.
 
 ## Gestor de Accesos (`/accesos`)
 

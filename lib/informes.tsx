@@ -29,10 +29,12 @@ export const INFORMES: Informe[] = [
     title: "Informe Comercial",
     corto: "Comercial",
     desc: "Ventas, leads y estado comercial en tiempo real por proyecto.",
-    tags: ["Por proyecto", "Leads", "Reservas", "Se abre en trei.cl"],
-    // Vive en trei.cl con su propio Entra (mismo tenant → SSO, sin segunda clave).
-    href: "https://trei.cl/informe_ventas/",
-    controlado: false,
+    tags: ["Por proyecto", "Leads", "Reservas", "Datos del día"],
+    // Antes vivía en trei.cl/informe_ventas/ con su propio candado Entra. Ahora
+    // vive dentro del portal: HTML servido por /ir/comercial y datos vía
+    // /api/comercial/db, bajo el mismo login y Gestor de Accesos.
+    href: "/ir/comercial",
+    controlado: true,
     icon: <path d="M4 20V10M10 20V4M16 20V13M3 20h18" />,
   },
   {
