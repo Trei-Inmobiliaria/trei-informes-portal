@@ -357,7 +357,7 @@ def cruzar(ic, sf, pay, opn, f9, corte, sii=None):
                  oc=_v(r.ocs),
                  refp=(f"{REF_SII.get(str(int(r.tipo_documento_referencia)), 'Ref. ' + str(int(r.tipo_documento_referencia)))} {r.folio_documento_referencia}"
                        if pd.notna(r.tipo_documento_referencia) and r.tipo in ('33', '34') and pd.notna(r.folio_documento_referencia) else None),
-                 sf=r.est_sf, cpb=_v(r.c), fc=_d(r.f),
+                 sf=r.est_sf, cpe=(_v(r.s_np) if r.est_sf == 'Provisoria / nula' else None), cpb=_v(r.c), fc=_d(r.f),
                  cta=(f"{r.gc} {str(r.gd).strip()}" if pd.notna(r.gc) else None),
                  cc=(str(r.ccd).strip() if pd.notna(r.ccd) else None), emp=_v(r.emp),
                  msf=(round(abs(r.m)) if pd.notna(r.m) and abs(abs(r.m) - r.tot) > TOL else None))
