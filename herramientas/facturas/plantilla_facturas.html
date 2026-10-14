@@ -155,7 +155,7 @@ td.neg{color:var(--bad)}
     <div id="notaUniverso"></div>
     <div><b>Estado SII</b> (fuente: consulta de eventos al SII con certificado digital): «Aceptada» = el SII registra aceptación; si va subrayada es aceptación automática (sin reclamo pasados 8 días corridos desde la recepción, Ley 19.983). «En proceso con el SII» = aún dentro del plazo de 8 días sin aceptación ni reclamo, o documento reciente aún no consultado. «Rechazada» = el receptor reclamó el documento por la regla de aceptación; el motivo mostrado es «Mal referencia OC-EEPP». Los rechazos manuales del flujo de aprobación de IConstruye no alteran este estado: se ven en «Estado IConstruye». Notas de crédito y débito no se consultan. Pase el mouse sobre el estado para ver el detalle; el estado exacto está en el detalle de cada fila y en el Excel.</div>
     <div><b>OC / referencia</b>: la OC proviene de las recepciones asociadas a la factura en IConstruye; «El proveedor refirió» muestra el código tal como lo informó el proveedor en el DTE (OC, contrato, etc.), útil para detectar referencias incompletas, por ejemplo un contrato «1700-30» cuando corresponde «1700-30-X».</div>
-    <div><b>Softland</b>: «Contabilizada» = comprobante vigente en Softland. «Pendiente de contabilizar» = aún sin registrar. «Pendiente empresa Softland» = la sociedad del documento no está en Softland; cuenta como pendiente. «No aplica» = rechazada en el SII o comprobante provisorio o nulo (el detalle aparece al pasar el mouse). Los «No aplica» no cuentan como pendientes ni en la antigüedad.</div>
+    <div><b>Softland</b>: «Contabilizada» = comprobante vigente en Softland. «Pendiente de contabilizar» = aún sin registrar. <span class="noscope">«Pendiente empresa Softland» = la sociedad del documento no está en Softland; cuenta como pendiente. </span>«No aplica» = rechazada en el SII o comprobante provisorio o nulo (el detalle aparece al pasar el mouse). Los «No aplica» no cuentan como pendientes ni en la antigüedad.</div>
     <div>Cruce con Softland por empresa + tipo de documento + folio + RUT del proveedor, contra comprobantes vigentes (cpbest = V) desde nov-2025. Cuando el monto del pasivo en Softland difiere del total del DTE, el detalle muestra el monto Softland.</div>
     <div><b>Pago (Softland)</b>: «Pagada» = pagada con egreso, cerrada con comprobante de traspaso o pagada a un factoring. «Pagada sin referencia» = el saldo del auxiliar en Proveedores (2-1-02, sin empresas relacionadas 103) ya no alcanza para este documento, asignando el saldo a los documentos más recientes (FIFO), pero ningún egreso cita el folio. «Pago parcial» = abonada en parte, con saldo. «Pendiente de pago» = por pagar al proveedor (En Proveedores) o al factoring (En Factoring: factura traspasada a la cuenta 2-1-02-109). «No aplica» = sin contabilizar, rechazada en el SII o nota de crédito. El estado exacto está en el detalle de la fila y en el Excel. Softland (contabilización y pagos): último comprobante cargado al <span id="fpagos">—</span>.</div>
     <div>Estado de pago IConstruye: campo de la factura en el flujo de compras; los documentos que solo están en la bandeja DTE no lo tienen. «≠» marca diferencia entre IConstruye y Softland.</div>
@@ -205,7 +205,7 @@ const dias = s => s? Math.round((HOY-new Date(s))/864e5):null;
 DATA.forEach(o=>{o.mes=o.fe?o.fe.slice(0,7):'';o.sfg=sfG(o); o.age=(o.sf==='Pendiente de contabilizar'||o.sf==='Sin empresa en Softland')?dias(o.fe):null; o.eics=o.eic?(EIC_MAP[o.eic]||o.eic):'Sin registro'; o.sii=o.sii||'—'; o.siig=siiG(o); o.psg=psG(o); o.cpet=o.cpe==='P'?'Provisorio':o.cpe==='N'?'Nulo':''; o.egn=(o.eg||[]).map(x=>x.split(' · ')[0]); o.lag=o.fc&&o.fe?Math.round((new Date(o.fc)-new Date(o.fe))/864e5):null;
   o.hay=[o.ps,o.psg,o.sfg,o.siig,o.oc,o.refp,o.sii,o.siim,o.eics,o.egn.join(' '),o.pago,(o.eg||[]).join(' '),o.mes?mesNom(o.mes):'',o.fo,o.pv,o.rut,o.rs,o.cg,o.cgc,o.cta,o.cc,o.cpb,o.t,o.ap,o.eic].join(' ').toLowerCase()});
 
-if(SCOPE){ document.getElementById('panelRs').style.display='none'; }
+if(SCOPE){ document.getElementById('panelRs').style.display='none';  document.querySelectorAll('.noscope').forEach(e=>e.style.display='none'); }
 
 const PS=['Pagada','Pagada sin referencia','Pago parcial','Pendiente de pago','No aplica'];
 const PIC=['Totalmente Pagado','Parcialmente Pagado','Sin Pago'];
@@ -262,7 +262,7 @@ function fillSelects(){
   const opt=(arr,cur,todos)=>`<option value="">${todos}</option>`+arr.map(r=>`<option${r===cur?' selected':''}>${esc(r)}</option>`).join('');
   document.getElementById('sii').innerHTML=opt(SIIS,st.sii,'Todos');
   document.getElementById('eis').innerHTML=opt(EIS,st.eis,'Todos');
-  document.getElementById('cf').innerHTML=opt(SF,st.cf,'Todos');
+  document.getElementById('cf').innerHTML=opt(SCOPE?SF.filter(x=>x!=='Pendiente empresa Softland'):SF,st.cf,'Todos');
   document.getElementById('psf').innerHTML=opt(PS,st.psf,'Todos');
   document.getElementById('clearBtn').hidden=!(st.mes||st.rs||st.sii||st.eis||st.cf||st.psf||st.q);
 }
