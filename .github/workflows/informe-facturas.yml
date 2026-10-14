@@ -31,9 +31,18 @@ jobs:
           SF_DB_URL: ${{ secrets.SF_DB_URL }}
           TZ: America/Santiago
         run: |
-          python herramientas/facturas/cruce_facturas_iconstruye_softland.py \
-            --plantilla herramientas/facturas/plantilla_facturas.html --salida salida --silencioso 2>/dev/null \
-            || { echo 'Falló la generación (el detalle se oculta porque este registro es público; ejecutar los mismos comandos en un PC)'; exit 1; }
+          # Hasta 3 intentos (las bases pueden estar ocupadas con sus cargas diarias). El detalle del error se oculta
+          # porque este registro es público: solo se imprime la clase de la excepción.
+          for i in 1 2 3; do
+            if python herramientas/facturas/cruce_facturas_iconstruye_softland.py \
+                 --plantilla herramientas/facturas/plantilla_facturas.html --salida salida --silencioso 2>err.txt; then
+              exit 0
+            fi
+            echo "Intento $i falló: $(grep -oE '^[A-Za-z_.]*(Error|Exception)[A-Za-z]*' err.txt | tail -1)"
+            [ "$i" -lt 3 ] && sleep 120
+          done
+          echo 'Falló la generación tras 3 intentos (detalle oculto: este registro es público)'
+          exit 1
       - name: Publicar en Supabase (bucket privado)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
