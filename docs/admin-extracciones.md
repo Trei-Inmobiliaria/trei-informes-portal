@@ -43,6 +43,21 @@ DESIST_SB_SERVICE_KEY       <service_role de Workflow Desistimientos>
 > servidor. Las keys **nunca** se exponen al navegador: el único endpoint
 > que las usa es `app/api/admin/extracciones/route.ts`, con `runtime = nodejs`.
 
+### Opcionales — pings a los informes del portal
+
+Si no se definen, el panel sigue funcionando pero los informes de Facturas
+quedan en "SIN DATOS" (el ping se salta silencioso). El de Comercial usa
+`COMERCIAL_SB_URL` + `COMERCIAL_SB_SERVICE_KEY` que ya están arriba.
+
+```
+FACTURAS_FUENTE_URL     https://xdislftwnamrlqqxybtm.supabase.co/storage/v1/object/informes-privados
+FACTURAS_FUENTE_TOKEN   <service_role de Contabilidad - Finanzas, mismo valor que CONTABILIDAD_SB_SERVICE_KEY>
+```
+
+Nota: estas dos env vars ya existen en el portal desde antes (las usa
+`/ir/facturas` para servir el HTML remoto), así que probablemente no haya
+nada que agregar — el monitor las reutiliza.
+
 ### Envío de correo (Resend)
 
 ```

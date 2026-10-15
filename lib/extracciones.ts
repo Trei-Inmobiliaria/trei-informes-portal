@@ -424,13 +424,18 @@ function horasDesde(ts: string | null): number {
 
 // ─── API pública del módulo ─────────────────────────────────────────────────
 
+import type { EstadoInforme } from "./informes-salud";
+
 export type ResultadoMonitor = {
   proyectos: EstadoProyecto[];
+  informes: EstadoInforme[];
   // Timestamp del chequeo, útil para la UI y el correo.
   evaluadoEn: string;
 };
 
 export async function evaluarExtracciones(): Promise<ResultadoMonitor> {
+  // Carga perezosa para evitar ciclo de módulos entre extracciones ↔ informes-salud.
+  const { evaluarInformes } = await import("./informes-salud");
   const proyectos: EstadoProyecto[] = await Promise.all(
     CONFIG.map(async (cfg) => {
       const url = process.env[cfg.envUrl];
@@ -500,7 +505,8 @@ export async function evaluarExtracciones(): Promise<ResultadoMonitor> {
     })
   );
 
-  return { proyectos, evaluadoEn: new Date().toISOString() };
+  const informes = await evaluarInformes(proyectos);
+  return { proyectos, informes, evaluadoEn: new Date().toISOString() };
 }
 
 // ─── Mensajes para la UI ────────────────────────────────────────────────────

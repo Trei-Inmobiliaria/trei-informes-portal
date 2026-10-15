@@ -9,6 +9,7 @@ import {
   type EstadoProyecto,
   type ResultadoMonitor,
 } from "@/lib/extracciones";
+import type { EstadoInforme } from "@/lib/informes-salud";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,29 +52,51 @@ export async function POST(req: NextRequest) {
   }
 
   const resultado = await evaluarExtracciones();
-  const problemas = resultado.proyectos.filter((p) => esProblema(p.estado));
-  if (!problemas.length) {
+
+  // Problemas de proyectos Supabase (extracción).
+  const problemasP = resultado.proyectos.filter((p) => esProblema(p.estado));
+  // Problemas de informes: SOLO cuando el ping del informe falló y el proyecto
+  // está OK — es decir, cuando el eslabón Supabase→informe se rompió por su
+  // cuenta. Si el proyecto ya está rojo, ya se mandó correo por el proyecto;
+  // no duplicamos la alerta.
+  const problemasI = resultado.informes.filter(
+    (i) =>
+      esProblema(i.estado) &&
+      i.estadoProyecto === "ok" &&
+      i.tipoCheck !== "hereda-proyecto"
+  );
+
+  if (!problemasP.length && !problemasI.length) {
     return NextResponse.json({ ok: true, evaluadoEn: resultado.evaluadoEn, alertas: 0 });
   }
 
-  // Dedup simple: no reenviamos el mismo problema en < 6 h. Lo guardamos en
-  // memoria del isolate; en un deploy nuevo se olvida (lo cual está bien: no
-  // queremos sorpresas de 24 h sin alertas tras un redeploy).
-  const nuevas = problemas.filter((p) => debeAlertar(p));
-  if (!nuevas.length) {
-    return NextResponse.json({ ok: true, evaluadoEn: resultado.evaluadoEn, alertas: 0, suprimidas: problemas.length });
+  // Dedup simple: no reenviamos el mismo problema en < 6 h.
+  const nuevasP = problemasP.filter((p) => debeAlertar(huellaProyecto(p)));
+  const nuevasI = problemasI.filter((i) => debeAlertar(huellaInforme(i)));
+  if (!nuevasP.length && !nuevasI.length) {
+    return NextResponse.json({
+      ok: true,
+      evaluadoEn: resultado.evaluadoEn,
+      alertas: 0,
+      suprimidas: problemasP.length + problemasI.length,
+    });
   }
 
-  const enviadas = await Promise.all(nuevas.map((p) => enviarAlerta(p, resultado)));
-  nuevas.forEach((p, i) => {
-    if (enviadas[i]) marcarAlerta(p);
-  });
+  const [enviadasP, enviadasI] = await Promise.all([
+    Promise.all(nuevasP.map((p) => enviarAlertaProyecto(p, resultado))),
+    Promise.all(nuevasI.map((i) => enviarAlertaInforme(i, resultado))),
+  ]);
+  nuevasP.forEach((p, k) => enviadasP[k] && marcarAlerta(huellaProyecto(p)));
+  nuevasI.forEach((i, k) => enviadasI[k] && marcarAlerta(huellaInforme(i)));
 
   return NextResponse.json({
     ok: true,
     evaluadoEn: resultado.evaluadoEn,
-    alertas: enviadas.filter(Boolean).length,
-    detalle: nuevas.map((p, i) => ({ id: p.id, enviado: enviadas[i] })),
+    alertas: enviadasP.filter(Boolean).length + enviadasI.filter(Boolean).length,
+    detalle: [
+      ...nuevasP.map((p, k) => ({ tipo: "proyecto", id: p.id, enviado: enviadasP[k] })),
+      ...nuevasI.map((i, k) => ({ tipo: "informe", id: i.id, enviado: enviadasI[k] })),
+    ],
   });
 }
 
@@ -86,25 +109,28 @@ const VENTANA_MS = 6 * 60 * 60 * 1000;
 const ultimas: Map<string, number> = (globalThis as any).__treiAlertas ||
   ((globalThis as any).__treiAlertas = new Map<string, number>());
 
-function huella(p: EstadoProyecto): string {
-  return `${p.id}:${p.estado}:${(p.ultima.error || p.diagnostico?.titulo || "").slice(0, 120)}`;
+function huellaProyecto(p: EstadoProyecto): string {
+  return `proyecto:${p.id}:${p.estado}:${(p.ultima.error || p.diagnostico?.titulo || "").slice(0, 120)}`;
 }
 
-function debeAlertar(p: EstadoProyecto): boolean {
-  const h = huella(p);
+function huellaInforme(i: EstadoInforme): string {
+  return `informe:${i.id}:${i.estado}:${(i.diagnostico?.titulo || i.resumen).slice(0, 120)}`;
+}
+
+function debeAlertar(h: string): boolean {
   const prev = ultimas.get(h);
   return !prev || Date.now() - prev > VENTANA_MS;
 }
 
-function marcarAlerta(p: EstadoProyecto): void {
-  ultimas.set(huella(p), Date.now());
+function marcarAlerta(h: string): void {
+  ultimas.set(h, Date.now());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Correo — Resend. HTML simple, en español, con lo mínimo para actuar.
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function enviarAlerta(
+async function enviarAlertaProyecto(
   p: EstadoProyecto,
   resultado: ResultadoMonitor
 ): Promise<boolean> {
@@ -121,7 +147,7 @@ async function enviarAlerta(
   }
 
   const subject = `[Portal Trei] ${etiquetaEstado(p.estado)} — ${p.nombre}`;
-  const html = armarHtml(p, resultado);
+  const html = armarHtmlProyecto(p, resultado);
 
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -139,7 +165,73 @@ async function enviarAlerta(
   return true;
 }
 
-function armarHtml(p: EstadoProyecto, resultado: ResultadoMonitor): string {
+// Envío de alerta de informe (puente roto con proyecto Supabase OK).
+async function enviarAlertaInforme(
+  i: EstadoInforme,
+  resultado: ResultadoMonitor
+): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.ALERTAS_FROM;
+  const to = (process.env.ALERTAS_TO || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!apiKey || !from || !to.length) {
+    console.warn("[alerta informe] Falta RESEND_API_KEY / ALERTAS_FROM / ALERTAS_TO");
+    return false;
+  }
+  const subject = `[Portal Trei] ${etiquetaEstado(i.estado)} — Informe ${i.nombre}`;
+  const html = armarHtmlInforme(i, resultado);
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ from, to, subject, html }),
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(() => "");
+    console.error(`[alerta informe] Resend ${r.status}: ${t.slice(0, 200)}`);
+    return false;
+  }
+  return true;
+}
+
+function armarHtmlInforme(i: EstadoInforme, resultado: ResultadoMonitor): string {
+  const d = i.diagnostico;
+  const color =
+    i.estado === "falla" ? "#E1093F" : i.estado === "atrasado" ? "#D97706" : "#6B7280";
+  const panelUrl = process.env.NEXT_PUBLIC_PORTAL_URL || "https://trei-informes.app";
+
+  const li = (xs: string[]) =>
+    xs.map((x) => `<li style="margin:4px 0">${escapar(x)}</li>`).join("");
+
+  return `<!doctype html><html lang="es"><body style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#f6f7f9;margin:0;padding:24px;color:#111">
+  <div style="max-width:620px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb">
+    <div style="background:${color};color:#fff;padding:18px 24px">
+      <div style="font-size:12px;letter-spacing:.8px;text-transform:uppercase;opacity:.9">Portal Trei · Puente Supabase → informe</div>
+      <h1 style="margin:4px 0 0;font-size:20px;font-weight:600">Informe ${escapar(i.nombre)} — ${etiquetaEstado(i.estado)}</h1>
+    </div>
+    <div style="padding:20px 24px;line-height:1.5">
+      <p style="margin:0 0 12px"><strong>Importante:</strong> la extracción a Supabase (${escapar(i.proyectoNombre)}) está <strong style="color:#1a9d5a">OK</strong>. El problema está en el eslabón que lleva los datos de Supabase al informe.</p>
+      <p style="margin:0 0 12px"><strong>Qué pasó.</strong> ${escapar(d?.titulo || i.resumen)}</p>
+      <p style="margin:0 0 4px;color:#6B7280;font-size:13px">${escapar(i.resumen)}</p>
+      ${d?.causas?.length ? `<h2 style="font-size:14px;margin:16px 0 6px">Causas probables</h2><ul style="margin:0;padding-left:20px;font-size:14px">${li(d.causas)}</ul>` : ""}
+      ${d?.pasos?.length ? `<h2 style="font-size:14px;margin:16px 0 6px">Cómo arreglarlo</h2><ol style="margin:0;padding-left:20px;font-size:14px">${li(d.pasos)}</ol>` : ""}
+      <div style="margin-top:20px">
+        <a href="${panelUrl}/admin/extracciones" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:8px;font-size:13px">Abrir panel</a>
+      </div>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #e5e7eb;color:#9CA3AF;font-size:11px">
+      Evaluado ${escapar(new Date(resultado.evaluadoEn).toLocaleString("es-CL", { timeZone: "America/Santiago" }))} ·
+      No se repite esta alerta por 6 h salvo que cambie el error.
+    </div>
+  </div>
+</body></html>`;
+}
+
+function armarHtmlProyecto(p: EstadoProyecto, resultado: ResultadoMonitor): string {
   const d = p.diagnostico;
   const color =
     p.estado === "falla" ? "#E1093F" : p.estado === "atrasado" ? "#D97706" : "#6B7280";

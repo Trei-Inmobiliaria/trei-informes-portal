@@ -8,6 +8,7 @@ import {
   etiquetaEstado,
   formatoRelativo,
 } from "@/lib/extracciones";
+import type { EstadoInforme } from "@/lib/informes-salud";
 
 type Props = { inicial: ResultadoMonitor };
 
@@ -67,6 +68,9 @@ export default function VistaExtracciones({ inicial }: Props) {
   }, []);
 
   const problemas = datos.proyectos.filter((p) => p.estado !== "ok");
+  const informesConProblemaPropio = datos.informes.filter(
+    (i) => i.estado !== "ok" && i.estadoProyecto === "ok" && i.tipoCheck !== "hereda-proyecto"
+  );
 
   return (
     <>
@@ -95,26 +99,49 @@ export default function VistaExtracciones({ inicial }: Props) {
       </section>
 
       {/* Grilla de proyectos */}
+      <h2 className="ext-h2">Extracciones a Supabase</h2>
+      <p className="ext-sub">
+        Qué llega desde PlanOk / IConstruye / SII hacia cada proyecto Supabase.
+      </p>
       <section className="ext-grid">
         {datos.proyectos.map((p) => (
           <TarjetaProyecto key={p.id} p={p} />
         ))}
       </section>
 
+      {/* Grilla de informes */}
+      <h2 className="ext-h2">Informes del portal</h2>
+      <p className="ext-sub">
+        Qué sale desde Supabase hacia los informes que ve la gente. Un informe en
+        rojo con su proyecto en verde significa que el puente de datos del portal
+        se cayó, no la ETL.
+      </p>
+      <section className="ext-grid-informes">
+        {datos.informes.map((i) => (
+          <TarjetaInforme key={i.id} i={i} />
+        ))}
+      </section>
+
       {/* Resumen de qué va a llegar al correo si no se arregla */}
-      {problemas.length ? (
+      {problemas.length || informesConProblemaPropio.length ? (
         <section className="ext-correo">
           <h2>Qué llegaría al correo ahora mismo</h2>
           <p className="lead">
-            El cron evalúa cada hora. Cuando un proyecto queda en atrasado, falla
-            o sin datos, se manda un correo por problema (misma falla no se
-            repite por 6 h).
+            El cron evalúa cada hora. Mandamos un correo por problema (misma
+            falla no se repite por 6 h). Si un informe cae con su proyecto OK,
+            llega un correo distinto que apunta al puente de datos.
           </p>
           <ul className="ext-correo-lista">
             {problemas.map((p) => (
-              <li key={p.id}>
-                <strong>{p.nombre}</strong> — {etiquetaEstado(p.estado)}:{" "}
+              <li key={`p-${p.id}`}>
+                <strong>Extracción · {p.nombre}</strong> — {etiquetaEstado(p.estado)}:{" "}
                 {p.diagnostico?.titulo || p.ultima.resumen}
+              </li>
+            ))}
+            {informesConProblemaPropio.map((i) => (
+              <li key={`i-${i.id}`}>
+                <strong>Informe · {i.nombre}</strong> — {etiquetaEstado(i.estado)}:{" "}
+                {i.diagnostico?.titulo || i.resumen}
               </li>
             ))}
           </ul>
@@ -173,7 +200,25 @@ export default function VistaExtracciones({ inicial }: Props) {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
           gap: 16px;
-          margin: 24px 0 32px;
+          margin: 12px 0 32px;
+        }
+        .ext-grid-informes {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 14px;
+          margin: 12px 0 32px;
+        }
+        .ext-h2 {
+          font-size: 15px;
+          font-weight: 600;
+          color: var(--tinta);
+          margin: 28px 0 2px;
+          letter-spacing: .2px;
+        }
+        .ext-sub {
+          font-size: 13px;
+          color: var(--gris);
+          margin: 0 0 4px;
         }
         .ext-correo {
           background: var(--carta);
@@ -360,6 +405,107 @@ function Badge({ estado }: { estado: EstadoExtraccion }) {
     >
       {texto}
     </span>
+  );
+}
+
+function TarjetaInforme({ i }: { i: EstadoInforme }) {
+  const esHereda = i.tipoCheck === "hereda-proyecto";
+  const estadoProyectoColor = colorEstado(i.estadoProyecto);
+  const estadoPingColor = i.estadoPing ? colorEstado(i.estadoPing) : "var(--gris-claro)";
+  return (
+    <article
+      style={{
+        background: "var(--carta)",
+        border: "1px solid var(--borde)",
+        borderRadius: 12,
+        padding: 16,
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        boxShadow: "var(--vidrio)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 10.5, color: "var(--gris)", textTransform: "uppercase", letterSpacing: ".6px" }}>{i.area}</div>
+          <h3 style={{ margin: "3px 0 0", fontSize: 14.5, color: "var(--tinta)", fontWeight: 600 }}>{i.nombre}</h3>
+        </div>
+        <Badge estado={i.estado} />
+      </header>
+
+      {/* Cadena de dependencias: 2 o 3 nodos pintados horizontal */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--gris)" }}>
+        <span style={{
+          padding: "2px 8px",
+          borderRadius: 999,
+          background: "#00000040",
+          border: `1px solid ${estadoProyectoColor}`,
+          color: "var(--tinta)",
+          whiteSpace: "nowrap",
+          maxWidth: 170,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }} title={`Proyecto Supabase: ${i.proyectoNombre} — ${etiquetaEstado(i.estadoProyecto)}`}>
+          {i.proyectoNombre}
+        </span>
+        <span>→</span>
+        <span style={{
+          padding: "2px 8px",
+          borderRadius: 999,
+          background: "#00000040",
+          border: `1px solid ${estadoPingColor}`,
+          color: "var(--tinta)",
+          whiteSpace: "nowrap",
+        }} title={esHereda ? "Hereda del proyecto (sin ping propio)" : "Ping al puente de datos"}>
+          {esHereda ? "externo" : "puente"}
+        </span>
+        <span>→</span>
+        <span style={{
+          padding: "2px 8px",
+          borderRadius: 999,
+          background: "#00000040",
+          border: `1px solid ${colorEstado(i.estado)}`,
+          color: "var(--tinta)",
+          whiteSpace: "nowrap",
+        }}>
+          informe
+        </span>
+      </div>
+
+      <div style={{ fontSize: 12, color: "var(--gris)", lineHeight: 1.4 }}>
+        {i.resumen}
+        {i.latenciaMs !== undefined && !esHereda ? (
+          <span style={{ color: "var(--gris-claro)" }}> · {i.latenciaMs} ms</span>
+        ) : null}
+      </div>
+
+      {i.diagnostico && i.estado !== "ok" ? (
+        <details
+          style={{
+            background: "#00000040",
+            border: "1px solid var(--borde)",
+            borderRadius: 8,
+            padding: "8px 10px",
+            fontSize: 12.5,
+            color: "var(--tinta)",
+          }}
+        >
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>{i.diagnostico.titulo}</summary>
+          {i.diagnostico.causas?.length ? (
+            <ul style={{ margin: "6px 0 0", paddingLeft: 18, lineHeight: 1.4 }}>
+              {i.diagnostico.causas.map((c, k) => <li key={k}>{c}</li>)}
+            </ul>
+          ) : null}
+          {i.diagnostico.pasos?.length ? (
+            <ol style={{ margin: "6px 0 0", paddingLeft: 18, lineHeight: 1.4 }}>
+              {i.diagnostico.pasos.map((s, k) => <li key={k}>{s}</li>)}
+            </ol>
+          ) : null}
+        </details>
+      ) : null}
+    </article>
   );
 }
 
