@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
-import { leerAccesos, permisoDe } from "@/lib/accesos";
+import { destinatariosExtracciones, leerAccesos, permisoDe } from "@/lib/accesos";
 import {
   esProblema,
   etiquetaEstado,
@@ -26,8 +26,8 @@ export async function GET() {
   const email = session?.user?.email?.toLowerCase() || "";
   if (!email) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   const { accesos } = await leerAccesos({ fresco: false });
-  if (!permisoDe(accesos, email).admin) {
-    return NextResponse.json({ error: "Solo administradores" }, { status: 403 });
+  if (!permisoDe(accesos, email).verExtracciones) {
+    return NextResponse.json({ error: "Sin permiso para ver Extracciones" }, { status: 403 });
   }
 
   const resultado = await evaluarExtracciones();
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     const session = await auth();
     const email = session?.user?.email?.toLowerCase() || "";
     const { accesos } = await leerAccesos({ fresco: false });
-    if (!permisoDe(accesos, email).admin) {
+    if (!permisoDe(accesos, email).verExtracciones) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
   }
@@ -130,19 +130,34 @@ function marcarAlerta(h: string): void {
 // Correo — Resend. HTML simple, en español, con lo mínimo para actuar.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Reúne destinatarios de la env var ALERTAS_TO + los usuarios del portal
+// activos con permiso de ver Extracciones (admins + flag verExtracciones).
+// Así basta con marcarle a alguien el chip en /accesos para que empiece a
+// recibir alertas, sin tener que tocar env vars en Vercel.
+async function resolverDestinatarios(): Promise<string[]> {
+  const fijos = (process.env.ALERTAS_TO || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  try {
+    const { accesos } = await leerAccesos({ fresco: false });
+    return Array.from(new Set([...fijos, ...destinatariosExtracciones(accesos)]));
+  } catch (e) {
+    console.warn("[alerta] no se pudo leer accesos, usando solo ALERTAS_TO:", e);
+    return fijos;
+  }
+}
+
 async function enviarAlertaProyecto(
   p: EstadoProyecto,
   resultado: ResultadoMonitor
 ): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.ALERTAS_FROM;
-  const to = (process.env.ALERTAS_TO || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const to = await resolverDestinatarios();
 
   if (!apiKey || !from || !to.length) {
-    console.warn("[alerta] Falta RESEND_API_KEY / ALERTAS_FROM / ALERTAS_TO; no se puede enviar");
+    console.warn("[alerta] Falta RESEND_API_KEY / ALERTAS_FROM / destinatarios; no se puede enviar");
     return false;
   }
 
@@ -172,12 +187,9 @@ async function enviarAlertaInforme(
 ): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.ALERTAS_FROM;
-  const to = (process.env.ALERTAS_TO || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const to = await resolverDestinatarios();
   if (!apiKey || !from || !to.length) {
-    console.warn("[alerta informe] Falta RESEND_API_KEY / ALERTAS_FROM / ALERTAS_TO");
+    console.warn("[alerta informe] Falta RESEND_API_KEY / ALERTAS_FROM / destinatarios");
     return false;
   }
   const subject = `[Portal Trei] ${etiquetaEstado(i.estado)} — Informe ${i.nombre}`;

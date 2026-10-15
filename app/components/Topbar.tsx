@@ -11,13 +11,20 @@ export default function Topbar({
   name,
   email,
   admin,
+  verExtracciones,
   activa,
 }: {
   name: string;
   email: string;
   admin: boolean;
+  // Usuario normal con permiso al panel Admin → Extracciones (pero no admin
+  // del portal entero). Default: admin ? true : false, para no quebrar
+  // llamadas antiguas al Topbar.
+  verExtracciones?: boolean;
   activa: Tab;
 }) {
+  const puedeExtracciones = admin || !!verExtracciones;
+  const muestraTabs = admin || puedeExtracciones;
   return (
     <header className="topbar">
       <div className="brand">
@@ -28,26 +35,32 @@ export default function Topbar({
         <span className="sub">Control de Gestión</span>
       </div>
 
-      {admin ? (
+      {muestraTabs ? (
         <nav className="tabs" aria-label="Vistas del portal">
           <a href="/" className={activa === "informes" ? "on" : ""}>
             Informes
           </a>
-          <a href="/accesos" className={activa === "accesos" ? "on" : ""}>
-            Accesos
-          </a>
-          <a
-            href="/admin/extracciones"
-            className={activa === "extracciones" ? "on" : ""}
-          >
-            Extracciones
-          </a>
-          <a href={PANEL_SALUD_URL} target="_blank" rel="noopener noreferrer">
-            Panel de Salud
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6" />
-            </svg>
-          </a>
+          {admin ? (
+            <a href="/accesos" className={activa === "accesos" ? "on" : ""}>
+              Accesos
+            </a>
+          ) : null}
+          {puedeExtracciones ? (
+            <a
+              href="/admin/extracciones"
+              className={activa === "extracciones" ? "on" : ""}
+            >
+              Extracciones
+            </a>
+          ) : null}
+          {admin ? (
+            <a href={PANEL_SALUD_URL} target="_blank" rel="noopener noreferrer">
+              Panel de Salud
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6" />
+              </svg>
+            </a>
+          ) : null}
         </nav>
       ) : null}
 

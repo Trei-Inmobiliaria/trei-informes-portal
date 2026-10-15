@@ -23,6 +23,7 @@ const ACCION: Record<Evento["accion"], string> = {
   reactivacion: "Reactivado",
   permisos: "Permisos",
   rol: "Rol",
+  extracciones: "Extracciones",
   datos: "Datos",
 };
 
@@ -42,7 +43,7 @@ function hace(iso?: string) {
 }
 
 const firma = (u: Usuario) =>
-  JSON.stringify([u.nombre || "", u.rol, u.activo, [...u.informes].sort()]);
+  JSON.stringify([u.nombre || "", u.rol, u.activo, [...u.informes].sort(), !!u.verExtracciones]);
 const firmaDom = (d: Dominio) => JSON.stringify([d.activo, [...d.informes].sort()]);
 
 export default function GestorAccesos({
@@ -357,6 +358,31 @@ export default function GestorAccesos({
                     </button>
                   ))}
                 </div>
+                {/* Toggle del panel de Extracciones. Para admins es implícito;
+                    para usuarios normales lo prendes individualmente. */}
+                {u.rol === "admin" ? (
+                  <span
+                    className="ext-impl"
+                    title="Los admins pueden ver Extracciones automáticamente"
+                  >
+                    + Extracciones
+                  </span>
+                ) : (
+                  <button
+                    className={u.verExtracciones ? "chip-ext on" : "chip-ext"}
+                    aria-pressed={!!u.verExtracciones}
+                    disabled={!escribible || fijo}
+                    title="Puede ver el panel de Extracciones y recibir las alertas por correo"
+                    onClick={() =>
+                      editar(u.email, (x) => ({
+                        ...x,
+                        verExtracciones: !x.verExtracciones || undefined,
+                      }))
+                    }
+                  >
+                    {u.verExtracciones ? "✓ Extracciones" : "+ Extracciones"}
+                  </button>
+                )}
               </div>
 
               {INFORMES.map((it) => {

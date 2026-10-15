@@ -25,7 +25,13 @@ export default async function Home({
 
   return (
     <>
-      <Topbar name={name} email={email} admin={permiso.admin} activa="informes" />
+      <Topbar
+        name={name}
+        email={email}
+        admin={permiso.admin}
+        verExtracciones={permiso.verExtracciones}
+        activa="informes"
+      />
 
       <main className="wrap">
         <p className="eyebrow">Portal de Informes</p>

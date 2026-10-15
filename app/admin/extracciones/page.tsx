@@ -11,7 +11,8 @@ export default async function Page() {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase() || "";
   const { accesos } = await leerAccesos({ fresco: true });
-  if (!permisoDe(accesos, email).admin) redirect("/");
+  const permiso = permisoDe(accesos, email);
+  if (!permiso.verExtracciones) redirect("/");
 
   // SSR del primer estado para que el admin vea algo útil al tiro; el cliente
   // refresca cada 60 s y por botón.
@@ -22,7 +23,8 @@ export default async function Page() {
       <Topbar
         name={session?.user?.name || ""}
         email={email}
-        admin
+        admin={permiso.admin}
+        verExtracciones={permiso.verExtracciones}
         activa="extracciones"
       />
       <main className="wrap wrap-ancho">

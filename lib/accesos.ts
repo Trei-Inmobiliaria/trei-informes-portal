@@ -30,6 +30,10 @@ export type Usuario = {
   rol: Rol;
   activo: boolean;
   informes: InformeId[];
+  // Acceso al panel Admin → Extracciones (monitor de pipelines + alertas).
+  // Los admins lo tienen implícito; este flag permite dárselo a un usuario
+  // normal sin convertirlo en admin del portal entero.
+  verExtracciones?: boolean;
   actualizado?: string;
   actualizadoPor?: string;
 };
@@ -52,7 +56,15 @@ export const limpiarDominio = (d: string) => d.trim().toLowerCase().replace(/^@+
 export type Evento = {
   ts: string;
   por: string;
-  accion: "alta" | "baja" | "suspension" | "reactivacion" | "permisos" | "rol" | "datos";
+  accion:
+    | "alta"
+    | "baja"
+    | "suspension"
+    | "reactivacion"
+    | "permisos"
+    | "rol"
+    | "datos"
+    | "extracciones";
   email: string;
   detalle?: string;
 };
@@ -286,6 +298,7 @@ export function normalizar(raw: any): Accesos {
         informes: (Array.isArray(u.informes) ? u.informes : []).filter((i: any) =>
           INFORME_IDS.includes(i)
         ),
+        verExtracciones: u.verExtracciones === true ? true : undefined,
         actualizado: u.actualizado,
         actualizadoPor: u.actualizadoPor,
       })),
@@ -307,12 +320,21 @@ export function normalizar(raw: any): Accesos {
 
 // ─── Consultas de permiso ───────────────────────────────────────────────────
 
-export type Permiso = { permitido: boolean; admin: boolean; informes: InformeId[] };
+export type Permiso = {
+  permitido: boolean;
+  admin: boolean;
+  informes: InformeId[];
+  // Puede entrar al panel Admin → Extracciones. Los admins siempre pueden;
+  // los usuarios normales solo si tienen el flag en su fila.
+  verExtracciones: boolean;
+};
 
 export function permisoDe(accesos: Accesos, email: string | null | undefined): Permiso {
   const e = (email || "").toLowerCase();
-  if (!e) return { permitido: false, admin: false, informes: [] };
-  if (SUPER_ADMINS.includes(e)) return { permitido: true, admin: true, informes: [...INFORME_IDS] };
+  const NEG: Permiso = { permitido: false, admin: false, informes: [], verExtracciones: false };
+  if (!e) return NEG;
+  if (SUPER_ADMINS.includes(e))
+    return { permitido: true, admin: true, informes: [...INFORME_IDS], verExtracciones: true };
   const u = accesos.usuarios.find((x) => x.email === e);
   // Sin fila propia: puede entrar por su dominio (nunca como admin). Una fila
   // propia —aunque esté suspendida— siempre manda sobre el dominio.
@@ -321,15 +343,37 @@ export function permisoDe(accesos: Accesos, email: string | null | undefined): P
     const d = (accesos.dominios || []).find((x) => x.dominio === dom && x.activo);
     const informes = d ? recortarInformes(e, d.informes) : [];
     return informes.length
-      ? { permitido: true, admin: false, informes }
-      : { permitido: false, admin: false, informes: [] };
+      ? { permitido: true, admin: false, informes, verExtracciones: false }
+      : NEG;
   }
-  if (!u.activo) return { permitido: false, admin: false, informes: [] };
+  if (!u.activo) return NEG;
   // Dominios restringidos (p. ej. razo.cl): solo sus informes fijos y nunca admin,
   // aunque en Edge Config diga otra cosa.
   if (informesPermitidos(e))
-    return { permitido: true, admin: false, informes: recortarInformes(e, u.informes) };
-  return { permitido: true, admin: u.rol === "admin", informes: u.informes };
+    return {
+      permitido: true,
+      admin: false,
+      informes: recortarInformes(e, u.informes),
+      verExtracciones: false,
+    };
+  const admin = u.rol === "admin";
+  return {
+    permitido: true,
+    admin,
+    informes: u.informes,
+    verExtracciones: admin || !!u.verExtracciones,
+  };
+}
+
+// Lista de correos que deben recibir las alertas del monitor de extracciones:
+// todos los usuarios activos marcados como admin o con verExtracciones. Para
+// el envío de correo juntamos esto con ALERTAS_TO en el route handler.
+export function destinatariosExtracciones(accesos: Accesos): string[] {
+  const emails = accesos.usuarios
+    .filter((u) => u.activo && (u.rol === "admin" || u.verExtracciones))
+    .map((u) => u.email);
+  // Los super-admins (ADMIN_EMAILS) siempre reciben, aunque no estén en la lista.
+  return Array.from(new Set([...emails, ...SUPER_ADMINS]));
 }
 
 export async function permisoActual(email: string | null | undefined): Promise<Permiso> {
@@ -362,6 +406,14 @@ export function diferencias(antes: Usuario[], despues: Usuario[], por: string): 
     }
     if ((a.nombre || "") !== (d.nombre || ""))
       ev.push({ ts, por, accion: "datos", email: d.email, detalle: d.nombre || "" });
+    if (!!a.verExtracciones !== !!d.verExtracciones)
+      ev.push({
+        ts,
+        por,
+        accion: "extracciones",
+        email: d.email,
+        detalle: d.verExtracciones ? "activado" : "quitado",
+      });
   }
   for (const a of antes) if (!mapD.has(a.email)) ev.push({ ts, por, accion: "baja", email: a.email });
   return ev;
