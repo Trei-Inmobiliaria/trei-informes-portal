@@ -86,6 +86,10 @@ type Config = {
   // Función que lee la bitácora y devuelve historial normalizado.
   leer: (url: string, key: string) => Promise<Corrida[]>;
   maxHorasSinCorrida: number;
+  // Si true, no alertamos por "atrasado": el proyecto se queda OK aunque pase
+  // tiempo sin corridas (útil para workflows operacionales donde la ausencia de
+  // movimientos es normal). Las fallas duras siguen alertando igual.
+  sinAlertaPorAtraso?: boolean;
   // Hint reutilizable si no hay nada en la bitácora.
   diagnosticoSinDatos: Diagnostico;
 };
@@ -152,18 +156,17 @@ async function leerContabilidad(url: string, key: string): Promise<Corrida[]> {
     ).catch(() => []),
   ]);
 
-  const corridasSii: Corrida[] = sii.map((f: any) => {
-    const estado =
-      !f.estado || String(f.estado).toLowerCase() === "ok" ? "ok" : "falla";
-    return {
-      ts: f.cargado_en,
-      estado,
-      resumen: `SII ${f.tipo}/${f.variante} ${f.periodo}: ${
-        Number(f.filas || 0).toLocaleString("es-CL")
-      } filas`,
-      error: estado === "ok" ? null : String(f.estado),
-    } satisfies Corrida;
-  });
+  // En sii.cargas el campo `estado` es un marcador de versión ("vigente",
+  // "reemplazada"), NO un semáforo de éxito/fallo: si una carga hubiera fallado
+  // la fila no quedaría. Por eso toda fila existente cuenta como ok.
+  const corridasSii: Corrida[] = sii.map((f: any) => ({
+    ts: f.cargado_en,
+    estado: "ok" as const,
+    resumen: `SII ${f.tipo}${f.variante ? `/${f.variante}` : ""} ${f.periodo}: ${
+      Number(f.filas || 0).toLocaleString("es-CL")
+    } filas`,
+    error: null,
+  }));
   const corridasPc: Corrida[] = pc.map((f: any) => ({
     ts: f.cargado_en,
     estado: "ok" as const, // esta tabla solo registra cargas exitosas
@@ -273,7 +276,8 @@ const CONFIG: Config[] = [
     envUrl: "DESIST_SB_URL",
     envKey: "DESIST_SB_SERVICE_KEY",
     leer: leerDesistimientos,
-    maxHorasSinCorrida: 24 * 14, // workflow operacional; alertar solo si quedó muy quieto
+    maxHorasSinCorrida: Infinity, // es un workflow operacional, no un ETL;
+    sinAlertaPorAtraso: true,     // mostramos última actividad sin alertar por silencio
     diagnosticoSinDatos: {
       titulo: "Sin movimiento reciente en case_events",
       causas: [
@@ -347,7 +351,7 @@ function diagnosticar(
     };
   }
 
-  if (horas > cfg.maxHorasSinCorrida) {
+  if (!cfg.sinAlertaPorAtraso && horas > cfg.maxHorasSinCorrida) {
     return {
       estado: "atrasado",
       ultima,
