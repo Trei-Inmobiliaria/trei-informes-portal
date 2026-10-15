@@ -3,7 +3,7 @@ import { signOut } from "@/auth";
 export const PANEL_SALUD_URL =
   process.env.PANEL_SALUD_URL || "https://trei-panel-salud.smendez.workers.dev/salud/";
 
-type Tab = "informes" | "accesos";
+type Tab = "informes" | "accesos" | "extracciones";
 
 // Barra superior compartida. Las pestañas son el selector entre vistas del
 // portal: Informes (todos) y, para administradores, Accesos + Panel de Salud.
@@ -35,6 +35,12 @@ export default function Topbar({
           </a>
           <a href="/accesos" className={activa === "accesos" ? "on" : ""}>
             Accesos
+          </a>
+          <a
+            href="/admin/extracciones"
+            className={activa === "extracciones" ? "on" : ""}
+          >
+            Extracciones
           </a>
           <a href={PANEL_SALUD_URL} target="_blank" rel="noopener noreferrer">
             Panel de Salud

@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/extracciones/cron",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
