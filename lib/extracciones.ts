@@ -113,13 +113,14 @@ async function leerComercial(url: string, key: string): Promise<Corrida[]> {
 }
 
 // ─── 2. BBDD IConstruye ─────────────────────────────────────────────────────
-// Tabla iconstruye_meta.carga_log: una fila por snapshot. Un día bueno tiene
-// una sola fila con estado=OK y ~69 tablas.
+// La bitácora vive en iconstruye_meta.carga_log, pero PostgREST solo expone
+// public por defecto; en vez de abrir el schema entero (más superficie de la
+// que necesitamos) leemos vía la vista public.monitor_carga_log, creada ad hoc
+// para el monitor (ver sql/vistas-monitor en Supabase).
 async function leerIConstruye(url: string, key: string): Promise<Corrida[]> {
   const r = await fetchRest(
-    `${url}/rest/v1/carga_log?select=snapshot_date,estado,tablas,filas,duracion_seg,error,ts&order=ts.desc&limit=10`,
-    key,
-    { "Accept-Profile": "iconstruye_meta" }
+    `${url}/rest/v1/monitor_carga_log?select=snapshot_date,estado,tablas,filas,duracion_seg,error,ts&order=ts.desc&limit=10`,
+    key
   );
   return r.map((f: any) => ({
     ts: f.ts,
@@ -138,11 +139,12 @@ async function leerIConstruye(url: string, key: string): Promise<Corrida[]> {
 // public.g_pc_cargas (balance / plan de cuentas, mensual). Pedimos los últimos
 // de ambos y los mezclamos; el "estado" global combina ambos.
 async function leerContabilidad(url: string, key: string): Promise<Corrida[]> {
+  // sii.cargas se consulta vía la vista public.monitor_sii_cargas por la misma
+  // razón que iconstruye: evitar exponer el schema sii completo por PostgREST.
   const [sii, pc] = await Promise.all([
     fetchRest(
-      `${url}/rest/v1/cargas?select=periodo,tipo,variante,estado,filas,cargado_en&order=cargado_en.desc&limit=10`,
-      key,
-      { "Accept-Profile": "sii" }
+      `${url}/rest/v1/monitor_sii_cargas?select=periodo,tipo,variante,estado,filas,cargado_en&order=cargado_en.desc&limit=10`,
+      key
     ).catch(() => []),
     fetchRest(
       `${url}/rest/v1/g_pc_cargas?select=empresa,tipo,periodo,filas,cargado_en&order=cargado_en.desc&limit=10`,
@@ -180,14 +182,16 @@ async function leerContabilidad(url: string, key: string): Promise<Corrida[]> {
 // heartbeat la fecha del último case_events. Si no hay movimientos en el
 // umbral, la etiqueta se queda en "atrasado" (nunca "falla").
 async function leerDesistimientos(url: string, key: string): Promise<Corrida[]> {
+  // case_events tiene (id, case_id, actor_id, actor_email, action, detail, created_at).
+  // El tipo de evento vive en `action`, no en `kind`.
   const r = await fetchRest(
-    `${url}/rest/v1/case_events?select=id,case_id,kind,created_at&order=created_at.desc&limit=5`,
+    `${url}/rest/v1/case_events?select=id,case_id,action,actor_email,created_at&order=created_at.desc&limit=5`,
     key
   );
   return r.map((f: any) => ({
     ts: f.created_at,
     estado: "ok" as const,
-    resumen: `evento #${f.id} (${f.kind || "sin tipo"}) sobre caso ${f.case_id}`,
+    resumen: `evento #${f.id} (${f.action || "sin acción"}) sobre caso ${f.case_id}${f.actor_email ? ` · ${f.actor_email}` : ""}`,
     error: null,
   }));
 }
