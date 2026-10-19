@@ -6,7 +6,8 @@ export type InformeId =
   | "tesoreria"
   | "contabilidad"
   | "facturas-recibidas-2026"
-  | "facturas-vcb";
+  | "facturas-vcb"
+  | "inversores";
 
 export type Informe = {
   id: InformeId;
@@ -98,6 +99,19 @@ export const INFORMES: Informe[] = [
     href: "/ir/facturas?v=vcb",
     controlado: true,
     icon: <path d="M4 4h12l4 4v12H4zM14 4v6h6M8 14h8M8 18h5" />,
+  },
+  {
+    id: "inversores",
+    ctag: "Inversores",
+    title: "Informe para Inversores",
+    corto: "Inversores",
+    desc: "Vista simplificada del Informe Comercial: avance de ventas, escrituras, velocidad y stock por proyecto. Cifras agregadas, sin datos de clientes.",
+    tags: ["Por proyecto", "Avance de ventas", "Escrituras", "Velocidad", "Sin datos personales"],
+    // Página del propio portal. Los datos salen de inversor_resumen() en
+    // Supabase, que filtra por los proyectos asignados a cada persona.
+    href: "/inversores",
+    controlado: true,
+    icon: <path d="M3 17l5-5 4 4 8-9M15 7h5v5" />,
   },
 ];
 
