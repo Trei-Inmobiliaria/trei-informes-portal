@@ -1,5 +1,6 @@
 import { readFile } from "fs/promises";
 import path from "path";
+import { createHash } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { permisoActual } from "@/lib/accesos";
@@ -66,6 +67,29 @@ async function leerLocal(archivo: string): Promise<Buffer | null> {
   }
 }
 
+// Cache en memoria del HTML ya reescrito, por instancia de lambda. El HTML
+// cambia 1 vez al día cuando corre el pipeline; refetchearlo en cada request
+// agrega ~200-400 ms de latencia que no aporta nada. TTL corto (60 s) para
+// que una regeneración del pipeline se vea pronto; el navegador también cachea
+// con stale-while-revalidate para que los hits repetidos del mismo usuario
+// nunca peguen al lambda. ETag deja responder 304 cuando no hubo cambios.
+type HtmlCacheEntry = { html: string; etag: string; fetchedAt: number };
+const htmlCache = new Map<string, HtmlCacheEntry>();
+const HTML_TTL_MS = 60_000;
+
+async function obtenerHtmlReescrito(archivo: string): Promise<HtmlCacheEntry | null> {
+  const now = Date.now();
+  const cached = htmlCache.get(archivo);
+  if (cached && now - cached.fetchedAt < HTML_TTL_MS) return cached;
+  const bytes = (await leerRemoto(archivo)) ?? (await leerLocal(archivo));
+  if (!bytes) return null;
+  const html = reescribirHtml(bytes);
+  const etag = `W/"${createHash("sha1").update(html).digest("base64").slice(0, 20)}"`;
+  const entry: HtmlCacheEntry = { html, etag, fetchedAt: now };
+  htmlCache.set(archivo, entry);
+  return entry;
+}
+
 // Inyección del portal. Se agrega server-side antes de </body> y sobrevive al
 // refresh diario del pipeline (que nunca sabe que está dentro del portal).
 // Contiene tres bloques, todos derivados del Manual de Marca interno:
@@ -115,9 +139,14 @@ const INYECCION_LOGOS = `
 .pcat:hover { color: #111 !important; }
 .pcat.on { color: #E1093F !important; border-bottom-color: #E1093F !important; }
 
+/* --- Respiro de la vista de proyecto: padding interno del main --- */
+/* El actual tiene gap:0 en el grid y #proy-main sin padding → las tarjetas
+   quedan pegadas al sidebar y al borde inferior de .pcats. */
+#proy-content-wrap { padding: 20px 20px 24px !important; }
+
 /* --- KPI de proyecto: franja de color 4px + border 1.5px [M§5] --- */
 /* El actual tenía border 0.5px y sin franja — faltaban dos reglas del manual. */
-.proy-kpi-row { gap: 12px !important; margin-bottom: 24px !important; }
+.proy-kpi-row { gap: 20px !important; margin-bottom: 28px !important; }
 .proy-kpi {
   position: relative !important;
   border: 1.5px solid #e4e4e8 !important;
@@ -382,18 +411,60 @@ const INYECCION_LOGOS = `
 </script>
 `;
 
+// Loader diferido para xlsx.full.min.js (~900 KB sin gzip, ~250 KB con). La
+// librería SOLO se usa cuando el usuario aprieta "Descargar Excel"; tenerla
+// en el <head> bloquea el primer paint sin motivo. El HTML original ya
+// contempla el escenario "aún no cargó" con un alert, así que podemos
+// diferirla sin cambiar nada en la lógica de export. requestIdleCallback la
+// trae cuando el browser está ocioso (típicamente 1-2 s después de pintar).
+const LOADER_XLSX = `<script>
+(function(){
+  var load=function(){
+    if(window.XLSX||window.__xlsxLoading)return;
+    window.__xlsxLoading=true;
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.async=true;
+    document.head.appendChild(s);
+  };
+  if('requestIdleCallback' in window){requestIdleCallback(load,{timeout:3000});}
+  else{setTimeout(load,2000);}
+})();
+</script>`;
+
+// Preconnect a cdnjs: Chart.js y xlsx viven ahí. Abrir la conexión TLS en
+// paralelo al parse del HTML reduce ~50-150 ms en la carga de Chart.js.
+const PRECONNECT = `<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>`;
+
 // Reescribe las URLs internas del HTML original para que apunten a este portal:
 //   /informe_ventas/db   → /api/comercial/db   (puente a Supabase REST)
 //   plano-raices.jpg     → /ir/comercial/plano-raices.jpg
-// Además inyecta INYECCION_LOGOS antes de </body> para pintar el logo de cada
-// proyecto en su vista. El HTML del repo bbdd-planok-trei no sabe que ahora
-// está en el portal; en vez de pedirle al pipeline que lo adapte, lo hacemos
-// al vuelo. Es un string replace sobre ~530 KB: tiempo despreciable.
+// Y aplica dos optimizaciones de perf:
+//   - Reemplaza el <script src="...xlsx...">, que carga eager y bloquea el
+//     primer paint, por un stub que lo diferirá cuando el browser esté idle.
+//   - Agrega <link rel="preconnect"> para cdnjs (Chart.js lo usa).
+// Finalmente inyecta INYECCION_LOGOS antes de </body>. El HTML del repo
+// bbdd-planok-trei no sabe que ahora está en el portal; en vez de pedirle al
+// pipeline que lo adapte, lo hacemos al vuelo. Es un string replace sobre
+// ~530 KB: tiempo despreciable.
 function reescribirHtml(bytes: Buffer): string {
   return bytes
     .toString("utf-8")
     .replace("'/informe_ventas/db'", "'/api/comercial/db'")
     .replace("'plano-raices.jpg'", "'/ir/comercial/plano-raices.jpg'")
+    // Lazy-load de xlsx: el <script src="..."> original lo sacamos y lo
+    // dejamos como un comentario para que quede trazable que algo lo
+    // reemplazó, por si debuggeamos.
+    .replace(
+      /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/[^"]+"><\/script>/,
+      `<!-- xlsx lazy-loaded by portal (ver route.ts) -->${LOADER_XLSX}`
+    )
+    // Preconnect a cdnjs: lo insertamos justo después del preconnect a
+    // gstatic que ya está en el <head>.
+    .replace(
+      '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
+      `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n${PRECONNECT}`
+    )
     .replace("</body>", INYECCION_LOGOS + "</body>");
 }
 
@@ -465,41 +536,49 @@ export async function GET(
     });
   }
 
-  // Funnel de escrituración (sub-informe). Vive al lado del principal.
-  if (subruta === "escrituracion" || subruta === "escrituracion/") {
-    const bytes =
-      (await leerRemoto(ARCHIVOS.escrituracion)) ??
-      (await leerLocal(ARCHIVOS.escrituracion));
-    if (!bytes) {
-      return noDisponible(
-        "El funnel de escrituración aún no está publicado. Avisa a Control de Gestión."
-      );
+  // Helper para responder HTML con cache del browser + 304 condicional.
+  // Se usa para el informe principal y el funnel de escrituración.
+  const responderHtml = async (archivo: string, msgSiNoHay: string) => {
+    const entry = await obtenerHtmlReescrito(archivo);
+    if (!entry) return noDisponible(msgSiNoHay);
+    const ifNoneMatch = request.headers.get("if-none-match");
+    if (ifNoneMatch && ifNoneMatch === entry.etag) {
+      return new NextResponse(null, {
+        status: 304,
+        headers: {
+          "ETag": entry.etag,
+          "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
+        },
+      });
     }
-    return new NextResponse(reescribirHtml(bytes), {
+    return new NextResponse(entry.html, {
       status: 200,
       headers: {
         "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "private, no-store",
+        // Browser cachea 60 s. Pasado ese tiempo revalida en background mientras
+        // sigue sirviendo el stale durante hasta 300 s más. Si el pipeline corrió,
+        // el próximo pedido del lambda refetchea y el ETag cambia, forzando una
+        // descarga real; si no cambió, respondemos 304 (header-only).
+        "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
+        "ETag": entry.etag,
       },
     });
+  };
+
+  // Funnel de escrituración (sub-informe). Vive al lado del principal.
+  if (subruta === "escrituracion" || subruta === "escrituracion/") {
+    return responderHtml(
+      ARCHIVOS.escrituracion,
+      "El funnel de escrituración aún no está publicado. Avisa a Control de Gestión."
+    );
   }
 
   // Default: informe comercial principal (acepta "" y "/" por si acaso).
   if (subruta === "" || subruta === "/") {
-    const bytes =
-      (await leerRemoto(ARCHIVOS.informe)) ?? (await leerLocal(ARCHIVOS.informe));
-    if (!bytes) {
-      return noDisponible(
-        "El informe comercial aún no está publicado. Avisa a Control de Gestión."
-      );
-    }
-    return new NextResponse(reescribirHtml(bytes), {
-      status: 200,
-      headers: {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "private, no-store",
-      },
-    });
+    return responderHtml(
+      ARCHIVOS.informe,
+      "El informe comercial aún no está publicado. Avisa a Control de Gestión."
+    );
   }
 
   return new NextResponse("No encontrado", { status: 404 });
