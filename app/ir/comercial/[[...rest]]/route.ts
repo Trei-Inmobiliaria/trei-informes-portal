@@ -181,7 +181,7 @@ const INYECCION_LOGOS = `
   padding: 14px 6px 10px;
   border-top: 1px solid #ececea;
   display: flex; flex-direction: column; align-items: center; gap: 10px;
-  min-height: 120px;
+  min-height: 160px;
 }
 #proy-logo-card .proy-logo-label {
   align-self: flex-start; padding-left: 4px;
@@ -189,7 +189,7 @@ const INYECCION_LOGOS = `
   color: #898781; font-weight: 700;
 }
 #proy-logo-card img {
-  max-width: 100%; max-height: 120px; object-fit: contain;
+  max-width: 100%; max-height: 160px; object-fit: contain;
   opacity: 0; transition: opacity .15s ease;
 }
 #proy-logo-card img.ready { opacity: 1; }
