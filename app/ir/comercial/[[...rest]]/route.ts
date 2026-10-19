@@ -66,80 +66,82 @@ async function leerLocal(archivo: string): Promise<Buffer | null> {
   }
 }
 
-// Inyección: encabezado con el logo del proyecto en cada vista. Los logos viven
-// en /privado/comercial/logos/ y se sirven por /ir/comercial/logos/<slug>.png.
-// El slug se calcula en el navegador a partir del display name de cada proyecto
-// (lo que aparece en el <option> del dropdown): minúsculas, sin tildes, con
-// guiones. Si un archivo no existe (404), el <img> se auto-remueve. Esto deja
-// que el pipeline regenere informe-ventas.html todos los días sin perder los
-// logos: la inyección es server-side acá, no es parte del HTML del pipeline.
+// Inyección: logo del proyecto activo al pie del sidebar de la pestaña Proyectos.
+// Los logos viven en /privado/comercial/logos/<tab_id>.png (plp, tsm, wind,
+// condell, raices, cromatico, mirador) — usamos tab_id directo porque el
+// display name a veces viene con "DE" / sin "DE" / con o sin "EDIFICIO" según
+// cómo lo escribieron en la DB; tab_id es estable.
+// El sidebar (#proy-side) lo monta un script dentro del HTML del pipeline con
+// un retraso de ~1.4s y queda vivo bajo setInterval. Un poll corto (500ms) nos
+// deja apegarnos ahí sin pelear por el orden de carga: se agrega una tarjeta
+// con el logo abajo de los .pitem y se actualiza cuando cambia el proyecto
+// seleccionado. Estilo tomado del propio sidebar (#e1e0d9 borde, #898781 label).
 const INYECCION_LOGOS = `
 <style>
-.logo-proyecto-wrap {
+#proy-logo-card {
+  margin: 10px 10px 6px;
+  padding: 14px 6px 6px;
+  border-top: 1px solid #ececea;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 14px 0 6px;
-  margin-bottom: 10px;
+  gap: 10px;
+  min-height: 72px;
 }
-.logo-proyecto-wrap img {
-  max-height: 90px;
-  max-width: 320px;
+#proy-logo-card .proy-logo-label {
+  align-self: flex-start;
+  padding-left: 4px;
+  font-size: 10.5px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: #898781;
+  font-weight: 700;
+}
+#proy-logo-card img {
+  max-width: 100%;
+  max-height: 72px;
   object-fit: contain;
+  opacity: 0;
+  transition: opacity .15s ease;
 }
+#proy-logo-card img.ready { opacity: 1; }
 </style>
 <script>
 (function() {
-  function slugify(s) {
-    return String(s)
-      .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
-      .toLowerCase().trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+  function current() {
+    var sel = document.getElementById('proy-select');
+    return sel && sel.value;
   }
-  function addLogo(tabId) {
-    var el = document.getElementById('tab-' + tabId);
-    if (!el) return;
-    // No duplicar si ya existe (p. ej. porque el usuario cambió y volvió)
-    var first = el.firstElementChild;
-    if (first && first.classList && first.classList.contains('logo-proyecto-wrap')) return;
-    var opt = document.querySelector('#proy-select option[value="' + tabId + '"]');
-    if (!opt) return;
-    var slug = slugify(opt.textContent);
-    if (!slug) return;
-    var wrap = document.createElement('div');
-    wrap.className = 'logo-proyecto-wrap';
-    var img = document.createElement('img');
-    img.className = 'logo-proyecto';
-    img.alt = opt.textContent;
-    img.src = '/ir/comercial/logos/' + slug + '.png';
-    img.onerror = function() { wrap.remove(); };
-    wrap.appendChild(img);
-    el.insertBefore(wrap, el.firstChild);
+  function ensureCard() {
+    var side = document.getElementById('proy-side');
+    if (!side) return null;
+    var card = document.getElementById('proy-logo-card');
+    if (card) return card;
+    card = document.createElement('div');
+    card.id = 'proy-logo-card';
+    card.innerHTML = '<div class="proy-logo-label">Proyecto</div><img alt="">';
+    side.appendChild(card);
+    return card;
   }
-  function hookWhenReady() {
-    var wrap = document.getElementById('proy-content-wrap');
-    if (!wrap) { setTimeout(hookWhenReady, 300); return; }
-    var mo = new MutationObserver(function(muts) {
-      muts.forEach(function(m) {
-        m.addedNodes.forEach(function(n) {
-          if (n.nodeType === 1 && n.id && n.id.indexOf('tab-') === 0) {
-            addLogo(n.id.slice('tab-'.length));
-          }
-        });
-      });
-    });
-    mo.observe(wrap, { childList: true });
-    // Barrido por si ya existen cuando engancho el observer
-    wrap.querySelectorAll('[id^="tab-"]').forEach(function(d) {
-      addLogo(d.id.slice('tab-'.length));
-    });
+  function sync() {
+    var card = ensureCard();
+    if (!card) return;
+    var tabId = current();
+    if (!tabId) return;
+    if (card.dataset.tabId === tabId) return;
+    card.dataset.tabId = tabId;
+    var img = card.querySelector('img');
+    img.classList.remove('ready');
+    img.onerror = function() { card.style.display = 'none'; };
+    img.onload = function() {
+      card.style.display = '';
+      img.classList.add('ready');
+    };
+    img.src = '/ir/comercial/logos/' + tabId + '.png';
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', hookWhenReady);
-  } else {
-    hookWhenReady();
-  }
+  setInterval(sync, 500);
+  if (document.readyState !== 'loading') sync();
+  else document.addEventListener('DOMContentLoaded', sync);
 })();
 </script>
 `;
