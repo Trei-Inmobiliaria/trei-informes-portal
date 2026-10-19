@@ -156,6 +156,36 @@ export default async function Inversores() {
                 <span className="kpi-s">{n0.format(tot.disp)} unidades disponibles</span></div>
             </section>
 
+            {proys.length > 1 ? (
+              <details className="inv-det inv-comp">
+                <summary><span className="cerrado">Ver comparativo entre proyectos</span><span className="abierto">Ocultar comparativo</span></summary>
+                <div className="inv-scroll">
+                  <table className="inv-tabla inv-ancha">
+                    <thead>
+                      <tr><th>Proyecto</th><th>Unidades</th><th>Vendidas</th><th>% vendido</th><th>Escrituradas</th><th>Disponibles</th>
+                        <th>UF vendidas</th><th>Neto del mes</th><th>Velocidad</th><th>Meses de stock</th></tr>
+                    </thead>
+                    <tbody>
+                      {proys.map((p) => (
+                        <tr key={p.proyecto}>
+                          <td>{p.nombre}</td><td>{n0.format(p.unidades)}</td><td>{n0.format(p.vendidas)}</td>
+                          <td>{pct(p.vendidas, p.unidades)}%</td><td>{n0.format(p.escrituradas)}</td><td>{n0.format(p.disponibles)}</td>
+                          <td>{n0.format(p.uf_vendidas)}</td><td>{n0.format(p.cierre_neto)}</td>
+                          <td>{n1.format(p.velocidad)}</td><td>{p.meses_stock === null ? "—" : n1.format(p.meses_stock)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr><td>Total</td><td>{n0.format(tot.unidades)}</td><td>{n0.format(tot.vendidas)}</td>
+                        <td>{pct(tot.vendidas, tot.unidades)}%</td><td>{n0.format(tot.escr)}</td><td>{n0.format(tot.disp)}</td>
+                        <td>{n0.format(tot.uf)}</td><td>{n0.format(tot.neto)}</td>
+                        <td>{n1.format(tot.vel)}</td><td>{mesesStock === null ? "—" : n1.format(mesesStock)}</td></tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </details>
+            ) : null}
+
             <section className="inv-cards" aria-label="Detalle por proyecto">
               {proys.map((p) => {
                 const serie = (D?.serie ?? []).filter((s) => s.proyecto === p.proyecto);
@@ -182,16 +212,72 @@ export default async function Inversores() {
                       <dt>Vendidas / total</dt><dd>{n0.format(p.vendidas)} / {n0.format(p.unidades)}</dd>
                       <dt>UF vendidas</dt><dd>{n0.format(p.uf_vendidas)}</dd>
                       <dt>Ventas netas del mes cerrado</dt><dd>{n0.format(p.cierre_neto)} un.</dd>
-                      <dt>Promesas del mes, UF</dt>
-                      <dd>{n0.format(p.cierre_promesas_uf)}{cumpl === null ? "" : <small> · {cumpl}% del presupuesto</small>}</dd>
-                      <dt>Velocidad (3 cierres)</dt><dd>{n1.format(p.velocidad)} un/mes</dd>
                       <dt>Meses de stock</dt><dd>{p.meses_stock === null ? "—" : n1.format(p.meses_stock)}</dd>
-                      <dt>Leads del mes en curso</dt><dd>{n0.format(p.leads_mes)}</dd>
                     </dl>
-                    <div className="inv-serie">
-                      <span className="kpi-k">Ventas netas, últimos cierres</span>
-                      <Barras puntos={serie} />
-                    </div>
+
+                    <details className="inv-det">
+                      <summary><span className="cerrado">Ver detalle</span><span className="abierto">Ocultar detalle</span></summary>
+
+                      <div className="inv-bloque">
+                        <h3>Inventario por estado</h3>
+                        <table className="inv-tabla">
+                          <thead><tr><th>Estado</th><th>Unidades</th><th>% del total</th></tr></thead>
+                          <tbody>
+                            <tr><td><i className="e" />Escrituradas</td><td>{n0.format(p.escrituradas)}</td><td>{pct(p.escrituradas, p.unidades)}%</td></tr>
+                            <tr><td><i className="p" />Promesadas</td><td>{n0.format(p.promesadas)}</td><td>{pct(p.promesadas, p.unidades)}%</td></tr>
+                            <tr><td><i className="r" />Reservadas</td><td>{n0.format(p.reservadas)}</td><td>{pct(p.reservadas, p.unidades)}%</td></tr>
+                            <tr><td><i className="d" />Disponibles</td><td>{n0.format(p.disponibles)}</td><td>{pct(p.disponibles, p.unidades)}%</td></tr>
+                          </tbody>
+                          <tfoot><tr><td>Total</td><td>{n0.format(p.unidades)}</td><td>100%</td></tr></tfoot>
+                        </table>
+                      </div>
+
+                      <div className="inv-bloque">
+                        <h3>Cierre de {mesLargo(D?.mes_cierre ?? null)}</h3>
+                        <dl>
+                          <dt>Promesas firmadas</dt><dd>{n0.format(p.cierre_promesas)} un. · {n0.format(p.cierre_promesas_uf)} UF</dd>
+                          <dt>Desistimientos</dt><dd>{n0.format(p.cierre_desist)} un.</dd>
+                          <dt>Ventas netas</dt><dd>{n0.format(p.cierre_neto)} un.</dd>
+                          <dt>Escrituras</dt><dd>{n0.format(p.cierre_escrituras)} un.</dd>
+                          <dt>Presupuesto de promesas</dt><dd>{p.ppto_promesas_uf > 0 ? `${n0.format(p.ppto_promesas_uf)} UF` : "sin presupuesto"}</dd>
+                          <dt>Cumplimiento</dt><dd>{cumpl === null ? "—" : `${cumpl}%`}</dd>
+                        </dl>
+                        {cumpl !== null ? (
+                          <div className="inv-cumpl" role="img" aria-label={`Cumplimiento del presupuesto: ${cumpl}%`}>
+                            <span style={{ width: `${Math.min(cumpl, 100)}%` }} className={cumpl >= 100 ? "ok" : ""} />
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="inv-bloque">
+                        <h3>Ritmo comercial</h3>
+                        <dl>
+                          <dt>Velocidad (promedio 3 cierres)</dt><dd>{n1.format(p.velocidad)} un/mes</dd>
+                          <dt>Unidades disponibles</dt><dd>{n0.format(p.disponibles)}</dd>
+                          <dt>Meses de stock</dt><dd>{p.meses_stock === null ? "—" : n1.format(p.meses_stock)}</dd>
+                          <dt>Leads del mes en curso</dt><dd>{n0.format(p.leads_mes)}</dd>
+                        </dl>
+                      </div>
+
+                      <div className="inv-bloque">
+                        <h3>Últimos cierres mensuales</h3>
+                        <Barras puntos={serie} />
+                        {serie.length > 0 ? (
+                          <table className="inv-tabla">
+                            <thead><tr><th>Mes</th><th>Ventas netas</th><th>Escrituras</th></tr></thead>
+                            <tbody>
+                              {[...serie].reverse().map((s) => (
+                                <tr key={s.periodo}>
+                                  <td>{MESES_LARGO[Number(s.periodo.slice(5, 7)) - 1]} {s.periodo.slice(0, 4)}</td>
+                                  <td className={s.neto < 0 ? "neg" : ""}>{n0.format(s.neto)}</td>
+                                  <td>{n0.format(s.escrituras)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : null}
+                      </div>
+                    </details>
                   </article>
                 );
               })}
