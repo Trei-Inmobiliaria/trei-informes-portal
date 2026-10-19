@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { signInWithMicrosoft } from "./actions";
+import { signInWithMicrosoft, signInWithMicrosoftVCB } from "./actions";
 
 function MicrosoftLogo() {
   return (
@@ -14,13 +14,17 @@ function MicrosoftLogo() {
   );
 }
 
-export default function LoginForm() {
+export default function LoginForm({ vcb = false }: { vcb?: boolean }) {
   const [showModal, setShowModal] = useState(false);
+  const [tenant, setTenant] = useState<"trei" | "vcb">("trei");
   const [submitting, setSubmitting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
 
-  const openModal = () => setShowModal(true);
+  const openModal = (t: "trei" | "vcb" = "trei") => {
+    setTenant(t);
+    setShowModal(true);
+  };
   const closeModal = () => {
     if (!submitting) setShowModal(false);
   };
@@ -49,16 +53,29 @@ export default function LoginForm() {
 
   return (
     <>
-      <form ref={formRef} action={signInWithMicrosoft}>
+      <form
+        ref={formRef}
+        action={tenant === "vcb" ? signInWithMicrosoftVCB : signInWithMicrosoft}
+      >
         <button
           type="button"
           className="btn-msft"
-          onClick={openModal}
+          onClick={() => openModal("trei")}
           disabled={submitting}
         >
           <MicrosoftLogo />
           Entrar con Microsoft
         </button>
+        {vcb ? (
+          <button
+            type="button"
+            className="btn-ghost btn-vcb"
+            onClick={() => openModal("vcb")}
+            disabled={submitting}
+          >
+            Tengo cuenta de VCB Constructora / Razo
+          </button>
+        ) : null}
       </form>
 
       {showModal ? (
@@ -81,9 +98,10 @@ export default function LoginForm() {
                 Inmobiliaria.
               </p>
               <p>
-                Vas a iniciar sesión con tu cuenta de Microsoft (la misma del
-                correo). Una vez dentro, verás los informes a los que tengas
-                acceso.
+                Vas a iniciar sesión con tu cuenta de Microsoft
+                {tenant === "vcb" ? " de VCB Constructora / Razo" : ""} (la
+                misma del correo). Una vez dentro, verás los informes a los que
+                tengas acceso.
               </p>
             </div>
             <div className="login-modal-actions">

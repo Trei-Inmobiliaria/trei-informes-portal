@@ -24,16 +24,37 @@ function correoReal(claims: any): string {
   ).toLowerCase();
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
+// Auth.js valida que el `iss` del token coincida con el issuer configurado, así
+// que un tenant distinto (VCB Constructora / razo.cl / ivcb.cl) necesita su
+// propio proveedor. Misma app de Entra (multi-tenant), distinto issuer y
+// distinta callback: /api/auth/callback/microsoft-entra-id-vcb (registrar en Azure).
+// Solo se activa si AUTH_MICROSOFT_ENTRA_ID_ISSUER_VCB está definido.
+const providers = [
+  MicrosoftEntraID({
+    clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
+    clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
+    // Ej: https://login.microsoftonline.com/<TENANT_ID>/v2.0
+    issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
+    authorization: { params: { scope: "openid profile email" } },
+  }),
+];
+if (process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER_VCB) {
+  providers.push(
     MicrosoftEntraID({
+      id: "microsoft-entra-id-vcb",
+      name: "Microsoft (VCB / Razo)",
       clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
       clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
-      // Ej: https://login.microsoftonline.com/<TENANT_ID>/v2.0
-      issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
+      issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER_VCB,
       authorization: { params: { scope: "openid profile email" } },
-    }),
-  ],
+    })
+  );
+}
+
+export const VCB_LOGIN_ENABLED = !!process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER_VCB;
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  providers,
   session: { strategy: "jwt" },
   pages: { signIn: "/login", error: "/login" },
   trustHost: true,

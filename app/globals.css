@@ -197,6 +197,7 @@ footer .sep{color:var(--borde-fuerte)}
 }
 .btn-ghost:hover{background:var(--fondo);color:var(--tinta)}
 .btn-ghost:disabled,.btn-msft:disabled{opacity:.6;cursor:not-allowed}
+.btn-vcb{display:block;width:100%;margin-top:10px}
 @keyframes login-modal-fade{from{opacity:0}to{opacity:1}}
 @keyframes login-modal-pop{
   from{opacity:0;transform:translateY(6px) scale(.98)}

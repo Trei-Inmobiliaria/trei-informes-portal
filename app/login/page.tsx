@@ -1,4 +1,5 @@
 import LoginForm from "./LoginForm";
+import { VCB_LOGIN_ENABLED } from "@/auth";
 
 export default function Login({
   searchParams,
@@ -26,7 +27,7 @@ export default function Login({
             </div>
           ) : null}
 
-          <LoginForm />
+          <LoginForm vcb={VCB_LOGIN_ENABLED} />
 
           <p className="login-note">
             Entras con tu cuenta de Microsoft (la misma del correo). No hay una
