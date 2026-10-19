@@ -79,14 +79,14 @@ async function leerLocal(archivo: string): Promise<Buffer | null> {
 const INYECCION_LOGOS = `
 <style>
 #proy-logo-card {
-  margin: 10px 10px 6px;
-  padding: 14px 6px 6px;
+  margin: 12px 10px 10px;
+  padding: 14px 6px 10px;
   border-top: 1px solid #ececea;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  min-height: 72px;
+  min-height: 120px;
 }
 #proy-logo-card .proy-logo-label {
   align-self: flex-start;
@@ -99,7 +99,7 @@ const INYECCION_LOGOS = `
 }
 #proy-logo-card img {
   max-width: 100%;
-  max-height: 72px;
+  max-height: 120px;
   object-fit: contain;
   opacity: 0;
   transition: opacity .15s ease;
