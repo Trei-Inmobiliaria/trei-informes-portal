@@ -100,7 +100,12 @@ async function obtenerHtmlReescrito(archivo: string): Promise<HtmlCacheEntry | n
 //   C. Botón flotante "¿Consulta?" → popover → mailto a Control de Gestión.
 // Logos: /privado/comercial/logos/<tab_id>.png — tab_id (plp, tsm, wind,
 // condell, raices, cromatico, mirador) es estable; el display name varía.
+// Bump cuando reemplaces un .png en /privado/comercial/logos/ para que los
+// browsers que tienen el anterior cacheado traigan el nuevo sin esperar.
+const LOGO_VER = "2026-10-19c";
+
 const INYECCION_LOGOS = `
+<script>window.__LOGO_VER = ${JSON.stringify(LOGO_VER)};</script>
 <style>
 /* ============================================================
    BLOQUE A · OVERRIDES DE MARCA
@@ -297,7 +302,10 @@ const INYECCION_LOGOS = `
     img.classList.remove('ready');
     img.onerror = function() { card.style.display = 'none'; };
     img.onload = function() { card.style.display = ''; img.classList.add('ready'); };
-    img.src = '/ir/comercial/logos/' + tabId + '.png';
+    // ?v= es un cache-buster: cuando cambiamos un logo bumpeamos LOGO_VER
+    // en el server y el browser trae la nueva imagen sin esperar a que
+    // expire su cache de 1 h.
+    img.src = '/ir/comercial/logos/' + tabId + '.png?v=' + (window.__LOGO_VER || '1');
   }
   setInterval(sync, 500);
   if (document.readyState !== 'loading') sync();
