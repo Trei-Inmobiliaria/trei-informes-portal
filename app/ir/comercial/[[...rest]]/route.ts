@@ -102,7 +102,7 @@ async function obtenerHtmlReescrito(archivo: string): Promise<HtmlCacheEntry | n
 // condell, raices, cromatico, mirador) es estable; el display name varía.
 // Bump cuando reemplaces un .png en /privado/comercial/logos/ para que los
 // browsers que tienen el anterior cacheado traigan el nuevo sin esperar.
-const LOGO_VER = "2026-10-19c";
+const LOGO_VER = "2026-10-19d";
 
 const INYECCION_LOGOS = `
 <script>window.__LOGO_VER = ${JSON.stringify(LOGO_VER)};</script>
@@ -193,6 +193,9 @@ const INYECCION_LOGOS = `
   opacity: 0; transition: opacity .15s ease;
 }
 #proy-logo-card img.ready { opacity: 1; }
+/* Terrazas: el isotipo es un cuadrado pequeño (48x48) muy denso visualmente;
+   lo dejamos crecer más que el resto para que gane presencia en el sidebar. */
+#proy-logo-card[data-tab-id="tsm"] img { max-height: 200px; }
 
 /* ============================================================
    BLOQUE C · BOTÓN FLOTANTE DE FEEDBACK (consultas al CdG)
