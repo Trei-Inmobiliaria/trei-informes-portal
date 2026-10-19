@@ -1,0 +1,44 @@
+/* Vista de inversores. Hereda tokens del portal (--rojo, --negro, --carta, --borde, --gris). */
+.inv-pagina{display:flex;flex-direction:column}
+.inv-kpis{margin-top:28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.inv-k{background:var(--carta);border:1px solid var(--borde);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:2px;box-shadow:var(--sombra);min-width:0}
+.inv-k b{font-size:30px;font-weight:700;color:var(--negro);letter-spacing:-.6px;line-height:1.15;font-variant-numeric:tabular-nums}
+.inv-k b small{font-size:13px;font-weight:400;color:var(--gris);letter-spacing:0;margin-left:4px}
+.inv-k .kpi-k{font-size:10.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--gris-claro)}
+.inv-k .kpi-s{font-size:12px;color:var(--gris)}
+
+.inv-cards{margin-top:22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px}
+.inv-card{background:var(--carta);border:1px solid var(--borde);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--sombra);min-width:0}
+.inv-card header{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.inv-card h2{margin:0;font-size:17px;font-weight:700;color:var(--negro);letter-spacing:-.2px}
+.inv-pct{font-size:26px;font-weight:700;color:var(--negro);font-variant-numeric:tabular-nums;white-space:nowrap}
+.inv-pct small{font-size:12px;font-weight:400;color:var(--gris);margin-left:4px}
+
+.inv-apil{display:flex;height:10px;border-radius:999px;overflow:hidden;background:var(--borde)}
+.inv-apil span{display:block;height:100%}
+.inv-apil .e,.inv-leyenda i.e{background:#2e9d5b}
+.inv-apil .p,.inv-leyenda i.p{background:#4a78c2}
+.inv-apil .r,.inv-leyenda i.r{background:#e58a8a}
+.inv-leyenda i.d{background:var(--borde)}
+.inv-leyenda{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--gris)}
+.inv-leyenda li{display:flex;align-items:center;gap:6px}
+.inv-leyenda i{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+.inv-card dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:7px 14px;border-top:1px solid var(--borde);padding-top:12px;font-size:13px}
+.inv-card dt{color:var(--gris)}
+.inv-card dd{margin:0;font-weight:700;color:var(--negro);text-align:right;font-variant-numeric:tabular-nums}
+.inv-card dd small{font-weight:400;color:var(--gris)}
+
+.inv-serie{border-top:1px solid var(--borde);padding-top:12px;display:flex;flex-direction:column;gap:6px}
+.inv-serie .kpi-k{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--gris-claro)}
+.inv-spark{width:100%;max-width:100%;height:auto}
+.inv-eje{stroke:var(--borde-fuerte);stroke-width:1}
+.inv-pos{fill:#2e9d5b}
+.inv-neg{fill:var(--rojo)}
+.inv-val{font-size:8.5px;fill:var(--negro);font-weight:700}
+.inv-mes{font-size:8.5px;fill:var(--gris);text-transform:uppercase}
+.inv-nodato{margin:0;font-size:12px;color:var(--gris)}
+
+.inv-vacia{margin-top:28px;border:1.5px dashed var(--borde-fuerte);border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:4px;text-align:center;color:var(--gris)}
+.inv-vacia b{color:var(--negro)}
+.inv-nota{margin:22px 0 0;max-width:86ch;font-size:12px;font-style:italic;color:var(--gris)}

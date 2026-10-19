@@ -1,0 +1,35 @@
+/* Sección Inversores del Gestor de Accesos. Usa los tokens del tema .tema-salud. */
+.inv-sec{margin-top:56px;padding-top:28px;border-top:1px solid var(--borde);display:flex;flex-direction:column;gap:18px}
+.inv-h{margin:0;font-size:clamp(22px,3vw,28px);letter-spacing:-.4px;color:var(--negro)}
+.inv-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.inv-kpi{background:var(--carta);border:1px solid var(--borde);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:2px;box-shadow:var(--sombra);min-width:0}
+.inv-kpi b{font-size:28px;line-height:1.15;color:var(--negro);font-variant-numeric:tabular-nums}
+.inv-kpi b.alerta{color:var(--rojo)}
+.inv-msg{border-radius:9px;padding:10px 14px;font-size:13px;border:1px solid var(--borde)}
+.inv-msg.ok{border-color:#1a9d5a66;color:var(--negro)}
+.inv-msg.error{border-color:var(--rojo);color:var(--rojo)}
+
+.inv-alta{background:var(--carta);border:1px solid var(--borde);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--sombra)}
+.inv-alta h3{margin:0;font-size:12px;letter-spacing:.9px;text-transform:uppercase;color:var(--gris-claro)}
+.inv-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.inv-form label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--gris-claro);min-width:0}
+.inv-form input,.inv-tabla input[type=date],.inv-tabla .nombre{font:inherit;font-size:13px;color:var(--negro);background:transparent;border:1px solid var(--borde);border-radius:8px;padding:8px 10px;min-width:0;width:100%}
+.inv-tabla .nombre{border-color:transparent;padding:2px 0;font-weight:700;font-size:13px}
+.inv-tabla .nombre:focus{border-color:var(--borde-fuerte);padding:2px 6px}
+.inv-proys{display:flex;flex-wrap:wrap;gap:6px}
+.inv-hint{font-size:12px;color:var(--gris)}
+
+.inv-tw{overflow-x:auto;border:1px solid var(--borde);border-radius:12px;background:var(--carta);box-shadow:var(--sombra)}
+.inv-tabla{border-collapse:collapse;width:100%;min-width:980px}
+.inv-tabla th{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--gris-claro);padding:12px 8px;text-align:center;vertical-align:bottom;line-height:1.25;border-bottom:1px solid var(--borde)}
+.inv-tabla td{padding:10px 8px;text-align:center;border-top:1px solid var(--borde);vertical-align:middle}
+.inv-tabla tr:first-child td{border-top:0}
+.inv-tabla th:first-child,.inv-tabla td:first-child{text-align:left;padding-left:16px;min-width:230px}
+.inv-tabla td.quien{display:flex;flex-direction:column;gap:2px}
+.inv-tabla td.quien small{font-size:11px;color:var(--gris);overflow-wrap:anywhere}
+.inv-tabla td.quien small.alerta{color:var(--rojo)}
+.inv-tabla tr.susp td{opacity:.55}
+.inv-tabla input[type=checkbox]{width:18px;height:18px;accent-color:var(--rojo);cursor:pointer}
+.inv-tabla input[type=date]{width:140px}
+.inv-guardar{padding:7px 12px;font-size:12px}
+.inv-vacio{text-align:center;color:var(--gris);padding:28px 16px !important}

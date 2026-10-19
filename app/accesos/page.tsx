@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { SUPER_ADMINS, faltasEscritura, leerAccesos, permisoDe, puedeEscribir } from "@/lib/accesos";
 import Topbar, { PANEL_SALUD_URL } from "@/app/components/Topbar";
 import GestorAccesos from "./GestorAccesos";
+import InversoresAccesos from "./InversoresAccesos";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export default async function AccesosPage() {
           yo={email}
           panelSaludUrl={PANEL_SALUD_URL}
         />
+        <InversoresAccesos />
       </main>
     </div>
   );
