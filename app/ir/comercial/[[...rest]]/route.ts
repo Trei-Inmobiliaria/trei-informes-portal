@@ -66,17 +66,97 @@ async function leerLocal(archivo: string): Promise<Buffer | null> {
   }
 }
 
+// Inyección: encabezado con el logo del proyecto en cada vista. Los logos viven
+// en /privado/comercial/logos/ y se sirven por /ir/comercial/logos/<slug>.png.
+// El slug se calcula en el navegador a partir del display name de cada proyecto
+// (lo que aparece en el <option> del dropdown): minúsculas, sin tildes, con
+// guiones. Si un archivo no existe (404), el <img> se auto-remueve. Esto deja
+// que el pipeline regenere informe-ventas.html todos los días sin perder los
+// logos: la inyección es server-side acá, no es parte del HTML del pipeline.
+const INYECCION_LOGOS = `
+<style>
+.logo-proyecto-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 0 6px;
+  margin-bottom: 10px;
+}
+.logo-proyecto-wrap img {
+  max-height: 90px;
+  max-width: 320px;
+  object-fit: contain;
+}
+</style>
+<script>
+(function() {
+  function slugify(s) {
+    return String(s)
+      .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+      .toLowerCase().trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+  function addLogo(tabId) {
+    var el = document.getElementById('tab-' + tabId);
+    if (!el) return;
+    // No duplicar si ya existe (p. ej. porque el usuario cambió y volvió)
+    var first = el.firstElementChild;
+    if (first && first.classList && first.classList.contains('logo-proyecto-wrap')) return;
+    var opt = document.querySelector('#proy-select option[value="' + tabId + '"]');
+    if (!opt) return;
+    var slug = slugify(opt.textContent);
+    if (!slug) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'logo-proyecto-wrap';
+    var img = document.createElement('img');
+    img.className = 'logo-proyecto';
+    img.alt = opt.textContent;
+    img.src = '/ir/comercial/logos/' + slug + '.png';
+    img.onerror = function() { wrap.remove(); };
+    wrap.appendChild(img);
+    el.insertBefore(wrap, el.firstChild);
+  }
+  function hookWhenReady() {
+    var wrap = document.getElementById('proy-content-wrap');
+    if (!wrap) { setTimeout(hookWhenReady, 300); return; }
+    var mo = new MutationObserver(function(muts) {
+      muts.forEach(function(m) {
+        m.addedNodes.forEach(function(n) {
+          if (n.nodeType === 1 && n.id && n.id.indexOf('tab-') === 0) {
+            addLogo(n.id.slice('tab-'.length));
+          }
+        });
+      });
+    });
+    mo.observe(wrap, { childList: true });
+    // Barrido por si ya existen cuando engancho el observer
+    wrap.querySelectorAll('[id^="tab-"]').forEach(function(d) {
+      addLogo(d.id.slice('tab-'.length));
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', hookWhenReady);
+  } else {
+    hookWhenReady();
+  }
+})();
+</script>
+`;
+
 // Reescribe las URLs internas del HTML original para que apunten a este portal:
 //   /informe_ventas/db   → /api/comercial/db   (puente a Supabase REST)
 //   plano-raices.jpg     → /ir/comercial/plano-raices.jpg
-// El HTML del repo bbdd-planok-trei no sabe que ahora está en el portal; en vez
-// de pedirle al pipeline que genere dos variantes (una por entorno), reescribimos
+// Además inyecta INYECCION_LOGOS antes de </body> para pintar el logo de cada
+// proyecto en su vista. El HTML del repo bbdd-planok-trei no sabe que ahora
+// está en el portal; en vez de pedirle al pipeline que lo adapte, lo hacemos
 // al vuelo. Es un string replace sobre ~530 KB: tiempo despreciable.
 function reescribirHtml(bytes: Buffer): string {
   return bytes
     .toString("utf-8")
     .replace("'/informe_ventas/db'", "'/api/comercial/db'")
-    .replace("'plano-raices.jpg'", "'/ir/comercial/plano-raices.jpg'");
+    .replace("'plano-raices.jpg'", "'/ir/comercial/plano-raices.jpg'")
+    .replace("</body>", INYECCION_LOGOS + "</body>");
 }
 
 function noDisponible(mensaje: string): NextResponse {
@@ -102,6 +182,29 @@ export async function GET(
   }
 
   const subruta = (params.rest ?? []).join("/");
+
+  // Assets: logos de los proyectos. Son estáticos y viven versionados en
+  // /privado/comercial/logos/<slug>.png. No vienen del pipeline, así que sólo
+  // se leen del repo (nada de Supabase). El JS inyectado por reescribirHtml
+  // los pide por este path con el slug del display name.
+  if (subruta.startsWith("logos/") && subruta.endsWith(".png")) {
+    const nombre = subruta.slice("logos/".length);
+    if (nombre.includes("/") || nombre.includes("..") || !nombre) {
+      return new NextResponse("No encontrado", { status: 404 });
+    }
+    const bytes = await leerLocal(path.join("logos", nombre));
+    if (!bytes) {
+      return new NextResponse("Logo no encontrado", { status: 404 });
+    }
+    return new NextResponse(bytes, {
+      status: 200,
+      headers: {
+        "Content-Type": "image/png",
+        // Los logos cambian muy rara vez; cache corto pero útil.
+        "Cache-Control": "private, max-age=3600",
+      },
+    });
+  }
 
   // Asset: plano del loteo de Raíces. Es el único asset binario que usa el
   // informe. Sirve de Supabase Storage; si no está, cae al archivo del repo.
