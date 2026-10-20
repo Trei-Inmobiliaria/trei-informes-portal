@@ -245,7 +245,8 @@ ETIQ_RECHAZO = {'RCD': MOTIVO_RCD, 'RFP': 'Reclamo por falta parcial de mercader
 
 def estados_sii(sii):
     """(rut_emisor, tipo, folio, rut_receptor) -> dict(sii, siim, siif, siic). Gobierna el último evento resolutivo por fecha.
-    Rechazada: RCD/RFP/RFT. Aceptada: ACD/ERM. 'SIN' (sentinela) = consultado sin eventos → Sin pronunciamiento."""
+    Rechazada: RCD/RFP/RFT. Aceptada: ACD/ERM, o PAG (pagado al contado) sin otro evento resolutivo → 'Aceptada (Cont)'.
+    'SIN' (sentinela) = consultado sin eventos → Sin pronunciamiento."""
     res = {}
     if sii is None or len(sii) == 0: return res
     sii = sii.copy()
@@ -262,7 +263,11 @@ def estados_sii(sii):
             else:
                 o.update(sii='Aceptada', siif=_d(u.fecha_evento))
         else:
-            o.update(sii='Sin pronunciamiento')
+            pg = g[g.codigo_evento == 'PAG']
+            if len(pg):   # «DTE pagado al contado»: el SII no registra aceptación en estos documentos; se tratan como aceptados
+                o.update(sii='Aceptada (Cont)', siif=_d(pg.iloc[-1].fecha_evento))
+            else:
+                o.update(sii='Sin pronunciamiento')
         res[(k[0], int(k[1]), int(k[2]), k[3])] = o
     return res
 
