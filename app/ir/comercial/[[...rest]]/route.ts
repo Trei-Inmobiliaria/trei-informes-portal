@@ -447,6 +447,13 @@ const LOADER_XLSX = `<script>
 // paralelo al parse del HTML reduce ~50-150 ms en la carga de Chart.js.
 const PRECONNECT = `<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>`;
 
+// Favicon de la pestaña. El HTML original del pipeline no define icono, así
+// que la pestaña queda con el globito genérico. Inyectamos el isotipo rojo
+// de Trei (el `[` del logo) como SVG servido desde /public/favicon.svg y
+// mantenemos /trei-logo.png como apple-touch-icon para iOS, que todavía no
+// soporta SVG en pantallas de inicio. Ambos están exentos del middleware.
+const FAVICON = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">\n<link rel="apple-touch-icon" href="/trei-logo.png">`;
+
 // Reescribe las URLs internas del HTML original para que apunten a este portal:
 //   /informe_ventas/db   → /api/comercial/db   (puente a Supabase REST)
 //   plano-raices.jpg     → /ir/comercial/plano-raices.jpg
@@ -475,6 +482,14 @@ function reescribirHtml(bytes: Buffer): string {
     .replace(
       '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
       `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n${PRECONNECT}`
+    )
+    // Favicon: el HTML del pipeline no lo trae; lo colgamos después del
+    // <title> para que la pestaña del browser muestre el isotipo de Trei
+    // en vez del globito genérico. Usamos regex porque el título cambia
+    // entre informe principal y funnel de escrituración.
+    .replace(
+      /(<title>[^<]*<\/title>)/,
+      `$1\n${FAVICON}`
     )
     .replace("</body>", INYECCION_LOGOS + "</body>");
 }
