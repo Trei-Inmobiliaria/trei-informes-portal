@@ -266,7 +266,7 @@ function fillSelects(){
   document.getElementById('psf').innerHTML=opt(PS,st.psf,'Todos');
   document.getElementById('clearBtn').hidden=!(st.mes||st.rs||st.sii||st.eis||st.cf||st.psf||st.q);
 }
-const COLS=[['fe','Documento',1,9],['oc','OC / referencia',1,10],['rs','Empresa / obra',1,11],['pv','Proveedor',1,12],['tot','Total CLP',0,8],['nct','Notas de crédito',1,9],['siig','Estado SII',1,10],['eics','Estado IConstruye',1,9],['sfg','Softland',1,10],['psg','Pago',1,12]];
+const COLS=[['fe','Documento',1,9],['oc','OC / referencia',1,10],['rs','Empresa / obra',1,11],['pv','Proveedor',1,12],['tot','Total CLP',0,8],['siig','Estado SII',1,10],['eics','Estado IConstruye',1,9],['sfg','Softland',1,10],['psg','Pago',1,12],['nct','Notas de crédito',1,9]];
 const ncCell=o=>{
   if(o.t!=='Factura'&&o.t!=='Factura exenta') return '<span class="sub">—</span>';
   if(!o.nc) return '<span class="sub">Sin NC</span>';
@@ -285,11 +285,11 @@ function renderDoc(rows){
       <td>${esc(o.rs)}<div class="sub">${esc(o.cg||'—')}</div></td>
       <td>${esc(o.pv)}<div class="sub">${esc(o.rut)}</div></td>
       <td class="num${o.tot<0?' neg':''}">${fmt(o.tot)}</td>
-      <td>${ncCell(o)}</td>
       <td>${o.sii==='—'?'<span class="sub">—</span>':`<span class="pill ${siiPill(o.sii)}${(o.sii==='Aceptada (Aut)'||o.sii==='Aceptada (Cont)'||o.sii==='Aceptada (Hist)')?' aut':''}" title="${esc(siiTip(o))}">${esc(o.siig)}</span>`}${o.siim?`<div class="sub motivo">${esc(o.siim)}</div>`:''}</td>
       <td>${o.eic?`<span class="pill ${eisPill(o.eics)}">${esc(o.eics)}</span>`:'<span class="sub">Solo bandeja DTE</span>'}</td>
       <td><span class="pill ${sfPill(o.sfg)}" title="${esc(sfTip(o))}">${esc(o.sfg==='Pendiente de contabilizar'?'Pendiente':o.sfg)}</span>${o.fc?`<div class="sub">${fd(o.fc)} · Cpbte ${esc(o.cpb)}</div>`:''}${o.age!=null?`<div class="age${o.age>15?' old':''}">${o.age} días</div>`:''}</td>
-      <td><span class="pill ${psgPill(o.psg)}" title="${esc(psTip(o))}">${esc(o.ps==='Nota de crédito'?(o.ncap?'Aplicada a factura '+o.ncap.map(x=>x.split(' · ')[0]).join(', '):'Sin factura asociada'):o.psg)}</span>${o.egn.length?`<div class="sub">Egreso ${esc(o.egn.join(', '))}</div>`:''}${(!o.egn.length&&o.trs)?`<div class="sub">Traspaso ${esc(o.trs.map(x=>x.split(' · ')[0]).join(', '))}</div>`:''}${o.saldo?`<div class="sub">Saldo ${fmt(o.saldo)}</div>`:''}${o.fact?`<div class="sub">${esc(o.fact)}</div>`:''}${o.cesx?'<div class="sub" style="color:var(--bad)">Cedida SII sin factoring</div>':''}${difPago(o)?'<div class="sub" style="color:var(--bad)">≠ IConstruye: '+esc(o.pago)+'</div>':''}</td></tr>`;
+      <td><span class="pill ${psgPill(o.psg)}" title="${esc(psTip(o))}">${esc(o.ps==='Nota de crédito'?(o.ncap?'Aplicada a factura '+o.ncap.map(x=>x.split(' · ')[0]).join(', '):'Sin factura asociada'):o.psg)}</span>${o.egn.length?`<div class="sub">N° egreso ${esc(o.egn.join(', '))}</div>`:''}${(!o.egn.length&&o.trs)?`<div class="sub">Traspaso ${esc(o.trs.map(x=>x.split(' · ')[0]).join(', '))}</div>`:''}${o.saldo?`<div class="sub">Saldo ${fmt(o.saldo)}</div>`:''}${o.fact?`<div class="sub">${esc(o.fact)}</div>`:''}${o.cesx?'<div class="sub" style="color:var(--bad)">Cedida SII sin factoring</div>':''}${difPago(o)?'<div class="sub" style="color:var(--bad)">≠ IConstruye: '+esc(o.pago)+'</div>':''}</td>
+      <td>${ncCell(o)}</td></tr>`;
     if(op){h+=`<tr class="det"><td colspan="10"><div class="detgrid">
       <div><span>Recepción IConstruye</span>${fd(o.fi)}</div>
       <div><span>Vencimiento</span>${fd(o.fv)}</div>
