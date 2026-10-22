@@ -76,8 +76,8 @@ tr.det td{background:#fbfbfc;padding:14px 18px 18px}
 .panel.collapsed h2{margin-bottom:0;padding-bottom:0;border-bottom:0}
 .btn-ghost{font:600 11px var(--f);border:1px solid #d8d8d8;background:var(--blanco);color:var(--t3);border-radius:6px;padding:9px 12px;cursor:pointer}
 .btn-ghost:hover{border-color:var(--rojo);color:var(--rojo)}
-.controls{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
-.controls input{grid-column:span 4;order:1;width:100%}
+.controls{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+.controls input{grid-column:span 5;order:1;width:100%}
 .controls #clearBtn{order:2}.controls .btn-export{order:3;justify-content:center}
 .controls label.f{order:4;display:grid;gap:3px;min-width:0;font:700 9.5px var(--f);letter-spacing:.8px;text-transform:uppercase;color:var(--t4)}
 .controls label.f select{width:100%;font:400 13px var(--f);letter-spacing:0;text-transform:none}
@@ -132,6 +132,7 @@ td.neg{color:var(--bad)}
   <section class="panel">
     <div class="controls" style="margin-bottom:14px">
       <input id="q" type="search" placeholder="Buscar folio, proveedor, RUT, obra, cuenta, comprobante…" aria-label="Buscar">
+      <label class="f">Tipo de documento<select id="td" aria-label="Tipo de documento"></select></label>
       <label class="f">Mes de emisión<select id="mes" aria-label="Mes de emisión"></select></label>
       <label class="f">Empresa<select id="rs" aria-label="Razón social"></select></label>
       <label class="f">Estado SII<select id="sii" aria-label="Estado SII"></select></label>
@@ -213,13 +214,13 @@ const psPill=s=>s==='Rechazada en SII'?'p-bad':s.startsWith('Pagada')||s.startsW
 const isPaidSF=s=>s.startsWith('Pagada')||s.startsWith('Cancelada');
 const porPagar=s=>s==='En Proveedores'||s==='Pago parcial'||s==='En Factoring';
 const difPago=o=>o.pago&&((o.pago==='Totalmente Pagado'&&porPagar(o.ps))||(o.pago==='Sin Pago'&&isPaidSF(o.ps)));
-const st={psf:'',sii:'',eis:'',cf:'',mes:'',rs:'',rsOpen:false,q:'',view:'doc',sort:'fe',dir:-1,open:new Set(),page:0};
+const st={td:'',psf:'',sii:'',eis:'',cf:'',mes:'',rs:'',rsOpen:false,q:'',view:'doc',sort:'fe',dir:-1,open:new Set(),page:0};
 const PAGE=50;
 const key=o=>o.rut+'|'+o.t+'|'+o.fo+'|'+o.rs;
 
 function filtered(ignoreRs){
   const q=st.q.trim().toLowerCase();
-  return DATA.filter(o=>(!st.mes||o.mes===st.mes)&&(ignoreRs||!st.rs||o.rs===st.rs)&&(!st.psf||o.psg===st.psf)&&(!st.sii||o.siig===st.sii)&&(!st.eis||o.eics===st.eis)&&(!st.cf||o.sfg===st.cf)&&(!q||q.split(/\s+/).every(t=>o.hay.includes(t))));
+  return DATA.filter(o=>(!st.td||(st.td==='__F'?(o.t==='Factura'||o.t==='Factura exenta'):o.t===st.td))&&(!st.mes||o.mes===st.mes)&&(ignoreRs||!st.rs||o.rs===st.rs)&&(!st.psf||o.psg===st.psf)&&(!st.sii||o.siig===st.sii)&&(!st.eis||o.eics===st.eis)&&(!st.cf||o.sfg===st.cf)&&(!q||q.split(/\s+/).every(t=>o.hay.includes(t))));
 }
 function renderKpis(rows){
   const tot=rows.reduce((a,o)=>a+o.tot,0);
@@ -259,12 +260,16 @@ function fillSelects(){
     const rss=[...new Set(DATA.map(o=>o.rs))].sort();
     rsSel.innerHTML='<option value="">Todas</option>'+rss.map(r=>`<option${r===st.rs?' selected':''}>${esc(r)}</option>`).join('');
   }
+  const TDS=[['__F','Facturas (afecta y exenta)'],['Factura','— Factura afecta'],['Factura exenta','— Factura exenta'],['Nota de crédito','Notas de crédito'],['Nota de débito','Notas de débito']];
+  const hayT=new Set(DATA.map(o=>o.t));
+  document.getElementById('td').innerHTML='<option value="">Todos</option>'+TDS.filter(([v])=>v==='__F'?(hayT.has('Factura')||hayT.has('Factura exenta')):hayT.has(v)).map(([v,t])=>`<option value="${v}"${v===st.td?' selected':''}>${t}</option>`).join('');
+  if(SCOPE){const c=document.querySelector('.controls');c.style.gridTemplateColumns='repeat(6,minmax(0,1fr))';c.querySelector('input').style.gridColumn='span 4';}
   const opt=(arr,cur,todos)=>`<option value="">${todos}</option>`+arr.map(r=>`<option${r===cur?' selected':''}>${esc(r)}</option>`).join('');
   document.getElementById('sii').innerHTML=opt(SIIS,st.sii,'Todos');
   document.getElementById('eis').innerHTML=opt(EIS,st.eis,'Todos');
   document.getElementById('cf').innerHTML=opt(SCOPE?SF.filter(x=>x!=='Pendiente empresa Softland'):SF,st.cf,'Todos');
   document.getElementById('psf').innerHTML=opt(PS,st.psf,'Todos');
-  document.getElementById('clearBtn').hidden=!(st.mes||st.rs||st.sii||st.eis||st.cf||st.psf||st.q);
+  document.getElementById('clearBtn').hidden=!(st.td||st.mes||st.rs||st.sii||st.eis||st.cf||st.psf||st.q);
 }
 const COLS=[['fe','Documento',1,9],['oc','OC / referencia',1,10],['rs','Empresa / obra',1,11],['pv','Proveedor',1,12],['tot','Total CLP',0,8],['siig','Estado SII',1,10],['eics','Estado IConstruye',1,9],['sfg','Softland',1,10],['psg','Pago',1,12],['nct','Notas de crédito',1,9]];
 const ncCell=o=>{
@@ -418,7 +423,7 @@ document.addEventListener('click',e=>{
   if(e.target.id==='exportBtn'){ toXlsx(); return }
   const b=e.target.closest('.barrow'); if(b){st.rs=st.rs===b.dataset.rs?'':b.dataset.rs;st.page=0;render();return}
   if(e.target.closest('#rsToggle')){st.rsOpen=!st.rsOpen;render();return}
-  if(e.target.id==='clearBtn'){Object.assign(st,{mes:'',rs:'',sii:'',eis:'',cf:'',psf:'',q:'',page:0});document.getElementById('q').value='';render();return}
+  if(e.target.id==='clearBtn'){Object.assign(st,{td:'',mes:'',rs:'',sii:'',eis:'',cf:'',psf:'',q:'',page:0});document.getElementById('q').value='';render();return}
   const t=e.target.closest('.tab'); if(t){st.view=t.dataset.v;render();return}
   const th=e.target.closest('th[data-s]'); if(th){const k=th.dataset.s; st.dir=st.sort===k?-st.dir:(['tot','fe','fc'].includes(k)?-1:1); st.sort=k; render(); return}
   if(e.target.id==='prev'){st.page--;render();return} if(e.target.id==='next'){st.page++;render();return}
@@ -427,6 +432,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{const r=e.target.closest&&e.target.closest('tr.oc'); if(r&&(e.key==='Enter'||e.key===' ')){e.preventDefault(); r.click()}});
 document.getElementById('q').addEventListener('input',e=>{st.q=e.target.value;st.page=0;render()});
 if(!SCOPE) document.getElementById('rs').addEventListener('change',e=>{st.rs=e.target.value;st.page=0;render()});
+document.getElementById('td').addEventListener('change',e=>{st.td=e.target.value;st.page=0;render()});
 document.getElementById('mes').addEventListener('change',e=>{st.mes=e.target.value;st.page=0;render()});
 document.getElementById('psf').addEventListener('change',e=>{st.psf=e.target.value;st.page=0;render()});
 document.getElementById('cf').addEventListener('change',e=>{st.cf=e.target.value;st.page=0;render()});
