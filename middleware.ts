@@ -5,6 +5,6 @@ export { auth as middleware } from "@/auth";
 // viven en /privado y solo se entregan vía /ir/facturas, que valida permiso.
 export const config = {
   matcher: [
-    "/((?!api/auth|login|_next/static|_next/image|favicon.ico|favicon.svg|trei-logo.png).*)",
+    "/((?!api/auth|login|_next/static|_next/image|favicon.ico|favicon.png|trei-logo.png).*)",
   ],
 };

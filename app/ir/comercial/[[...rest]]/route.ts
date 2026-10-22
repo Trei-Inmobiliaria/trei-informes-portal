@@ -448,11 +448,12 @@ const LOADER_XLSX = `<script>
 const PRECONNECT = `<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>`;
 
 // Favicon de la pestaña. El HTML original del pipeline no define icono, así
-// que la pestaña queda con el globito genérico. Inyectamos el isotipo rojo
-// de Trei (el `[` del logo) como SVG servido desde /public/favicon.svg y
-// mantenemos /trei-logo.png como apple-touch-icon para iOS, que todavía no
-// soporta SVG en pantallas de inicio. Ambos están exentos del middleware.
-const FAVICON = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">\n<link rel="apple-touch-icon" href="/trei-logo.png">`;
+// que la pestaña queda con el globito genérico. Inyectamos /favicon.png,
+// que es el logo real de Trei (isotipo + "trei" + "INMOBILIARIA") en
+// canvas cuadrado 256x256 con padding, generado del PNG oficial — no una
+// reinterpretación. Lo mismo para apple-touch-icon. Ambos están exentos
+// del middleware.
+const FAVICON = `<link rel="icon" type="image/png" href="/favicon.png">\n<link rel="apple-touch-icon" href="/favicon.png">`;
 
 // Reescribe las URLs internas del HTML original para que apunten a este portal:
 //   /informe_ventas/db   → /api/comercial/db   (puente a Supabase REST)

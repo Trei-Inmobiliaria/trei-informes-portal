@@ -5,12 +5,11 @@ export const metadata: Metadata = {
   title: "Portal de Informes — Trei",
   description: "Acceso a los informes financieros de Trei Inmobiliaria.",
   robots: { index: false, follow: false },
-  // Isotipo rojo de Trei en la pestaña del navegador. SVG para que se vea
-  // nítido en cualquier DPI; apple-touch-icon cae al logo PNG completo
-  // porque iOS todavía no soporta SVG en pantallas de inicio.
+  // Logo real de Trei en la pestaña del navegador: PNG cuadrado 256x256
+  // generado del logo oficial con padding (ver public/favicon.png).
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/trei-logo.png" }],
+    icon: [{ url: "/favicon.png", type: "image/png" }],
+    apple: [{ url: "/favicon.png" }],
   },
 };
 
