@@ -52,6 +52,44 @@ RS = {'76689694-4': 'VCB Constructora SpA', '77108223-8': 'VCB Inversiones S.A.'
       '77911822-3': 'Activo Gerenciamiento Inmobiliario SpA'}
 TIPO = {'33': 'Factura', '34': 'Factura exenta', '56': 'Nota de débito', '61': 'Nota de crédito'}
 TOL = 2  # tolerancia de redondeo en pesos
+# Meses sin iConstruye: facturas contabilizadas en Softland con emisión anterior a esta fecha y sin DTE en iConstruye
+# se agregan como «Solo Softland» (SII: Aceptada, validadas con el RCV en el punto de control). La constructora (IVCB1) se excluye:
+# siempre tuvo iConstruye.
+SOLO_SF_HASTA = {'2026': '2026-05-01'}
+SOLO_SF_EXCLUYE = {'IVCB1'}
+ETQ_SOLO_SF = 'Solo Softland'
+SII_HIST = 'Aceptada (Hist)'
+
+
+def _dv(n):
+    s, f = 0, 2
+    for d in reversed(str(int(n))):
+        s += int(d) * f; f = 2 if f == 7 else f + 1
+    r = 11 - s % 11
+    return '0' if r == 11 else 'K' if r == 10 else str(r)
+
+
+def solo_softland(g, ic, anio):
+    """Documentos vigentes en Softland (por empresa/tipo/folio/proveedor) sin DTE en iConstruye y emitidos antes del inicio de iConstruye."""
+    hasta = SOLO_SF_HASTA.get(str(anio))
+    if not hasta or len(g) == 0: return None
+    inv = {v: k for k, v in EMP.items() if v}
+    ya = set(zip(ic.emp, ic.tipo, ic.folio.astype('Int64'), ic.aux))
+    e = g[g.emp.isin(inv) & ~g.emp.isin(SOLO_SF_EXCLUYE) & g.fd.notna() & (pd.to_datetime(g.fd) < pd.Timestamp(hasta))
+          & (pd.to_datetime(g.fd) >= pd.Timestamp(f'{anio}-01-01'))].copy()
+    e = e[[(a, b, c, d) not in ya for a, b, c, d in zip(e.emp, e.tipo, e.folio.astype('Int64'), e.aux)]]
+    if len(e) == 0: return None
+    e['tax_id_receptor'] = e.emp.map(inv)
+    e['tax_id_emisor'] = [f"{a}-{_dv(a)}" if str(a).isdigit() else str(a) for a in e.aux]
+    e['razon_social_emisor'] = e.nom.fillna('')
+    e['tipo_dte'] = e.tipo.astype(int)
+    e['fe'] = e.fd
+    e['monto_total'] = e.m.abs()
+    e['tot'] = e.monto_total
+    e['solosf'] = True
+    e['rs'] = e.tax_id_receptor.map(RS)
+    return e[['emp', 'rs', 'aux', 'tipo', 'folio', 'tipo_dte', 'tax_id_emisor', 'razon_social_emisor', 'tax_id_receptor', 'fe',
+              'monto_total', 'tot', 'solosf']]
 
 # ------------------------------------------------------------------ SQL — BBDD IConstruye
 SQL_IC_DTE = """
@@ -98,7 +136,7 @@ from iconstruye.sii_eventos_reclamo
 SQL_SF_CONTAB = """
 with doc as (
   select m.empresa, m.cpbano, m.cpbnum, m.areacod, m.ttdcod, m.numdoc::bigint numdoc, m.codaux, min(m.cpbfec) cpbfec,
-         sum(m.movhaber - m.movdebe) monto_pasivo, min(c.cpbest) cpbest
+         sum(m.movhaber - m.movdebe) monto_pasivo, min(c.cpbest) cpbest, min(m.movfe) fdoc
   from grupo.movimientos m join grupo.comprobantes c using (empresa,cpbano,cpbnum,areacod)
   where m.ttdcod in ('33','34','56','61') and m.pctcod like '2-1-%%' and m.cpbfec >= %(desde_sf)s
   group by 1,2,3,4,5,6,7
@@ -113,8 +151,9 @@ gasto as (
   order by m.empresa,m.cpbano,m.cpbnum,m.areacod, abs(m.movdebe-m.movhaber) desc
 )
 select d.empresa e, d.ttdcod t, d.numdoc n, d.codaux a, d.cpbnum c, d.cpbfec::date f, d.cpbest s, round(d.monto_pasivo) m,
-       g.pctcod gc, trim(g.pcdesc) gd, trim(g.desccc) ccd
+       g.pctcod gc, trim(g.pcdesc) gd, trim(g.desccc) ccd, d.fdoc::date fd, trim(au.nomaux) nomaux
 from doc d left join gasto g using (empresa,cpbano,cpbnum,areacod)
+left join grupo.auxiliares au on au.empresa = d.empresa and au.codaux = d.codaux
 """
 
 # Pagos identificados por glosa «Pago: <ttd> <folio>;» sobre cuentas 2-1-*, con banco del egreso
@@ -272,7 +311,7 @@ def estados_sii(sii):
     return res
 
 
-def cruzar(ic, sf, pay, opn, f9, corte, sii=None):
+def cruzar(ic, sf, pay, opn, f9, corte, sii=None, anio=None):
     est_sii = estados_sii(sii)
     # --- IConstruye
     ic = ic.copy()
@@ -293,8 +332,14 @@ def cruzar(ic, sf, pay, opn, f9, corte, sii=None):
     sf['m'] = pd.to_numeric(sf.m)
     k = ['emp', 'tipo', 'folio', 'aux']
     vig = sf[sf.s == 'V'].sort_values('f')
+    if 'fd' not in sf.columns: sf['fd'] = None; sf['nomaux'] = None   # compatibilidad con extracciones sin esas columnas
+    vig = sf[sf.s == 'V'].sort_values('f')
     g = vig.groupby(k).agg(c=('c', 'first'), f=('f', 'first'), m=('m', 'sum'), gc=('gc', 'first'),
-                           gd=('gd', 'first'), ccd=('ccd', 'first')).reset_index()
+                           gd=('gd', 'first'), ccd=('ccd', 'first'), fd=('fd', 'min'), nom=('nomaux', 'first')).reset_index()
+    extra = solo_softland(g, ic, anio or (str(ic.fe.min())[:4] if len(ic) else '')) if (anio or len(ic)) else None
+    if extra is not None:
+        ic = pd.concat([ic, extra], ignore_index=True)
+    if 'solosf' not in ic.columns: ic['solosf'] = False
     np_ = sf[sf.s != 'V'].groupby(k).agg(s_np=('s', 'first')).reset_index()
     x = ic.merge(g, on=k, how='left').merge(np_, on=k, how='left')
 
@@ -366,8 +411,13 @@ def cruzar(ic, sf, pay, opn, f9, corte, sii=None):
                  cta=(f"{r.gc} {str(r.gd).strip()}" if pd.notna(r.gc) else None),
                  cc=(str(r.ccd).strip() if pd.notna(r.ccd) else None), emp=_v(r.emp),
                  msf=(round(abs(r.m)) if pd.notna(r.m) and abs(abs(r.m) - r.tot) > TOL else None))
+        ss = bool(r.solosf == True)   # noqa: E712  (NaN en filas de iConstruye)
         es = est_sii.get((r.tax_id_emisor, int(r.tipo), int(r.folio), r.tax_id_receptor))
-        if r.tipo in ('33', '34', '43'):
+        if ss:
+            o['eic'] = ETQ_SOLO_SF; o['solosf'] = 1
+            for kk in ('neto', 'iva', 'fi', 'fv'): o.pop(kk, None)
+            if r.tipo in ('33', '34'): o['sii'] = SII_HIST
+        elif r.tipo in ('33', '34', '43'):
             o.update(es or dict(sii='Sin consulta'))
             # Ley 19.983: sin reclamo dentro de 8 días corridos desde la recepción, la factura se da por aceptada
             if o['sii'] == 'Sin pronunciamiento':
@@ -509,7 +559,7 @@ def main():
     os.makedirs(a.salida, exist_ok=True)
 
     ic, sf, pay, opn, f9, sii = extraer(a)
-    out = cruzar(ic, sf, pay, opn, f9, a.corte, sii)
+    out = cruzar(ic, sf, pay, opn, f9, a.corte, sii, a.desde[:4])
     meta = armar_meta(out, a, hoy)
 
     json.dump(dict(meta=meta, datos=out), open(os.path.join(a.salida, 'facturas_cruce.json'), 'w', encoding='utf-8'),

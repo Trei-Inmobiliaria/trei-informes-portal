@@ -45,6 +45,19 @@ assert o2['eic'] == 'Rechazado' and o2['sii'] == 'Sin consulta' and o2['sf'] == 
 # sin tabla SII: todo «Sin consulta», no falla
 assert all(o['sii'] == 'Sin consulta' for o in cr.cruzar(ic, sf, pay, opn, f9, '2026-10-07', pd.DataFrame()))
 
+# Solo Softland: facturas ene-abr contabilizadas sin DTE en iConstruye (no la constructora IVCB1)
+sf2 = pd.DataFrame([
+    dict(e='IVCB5', t='33', n=2754, a='76713281', c='00000300', f=pd.Timestamp('2026-04-10'), s='V', m=-119000, gc='5-1', gd='Gasto', ccd='Obra', fd=pd.Timestamp('2026-04-08'), nomaux='LIDZ SPA'),
+    dict(e='IVCB5', t='61', n=77, a='76713281', c='00000301', f=pd.Timestamp('2026-04-12'), s='V', m=11900, gc='5-1', gd='Gasto', ccd='Obra', fd=pd.Timestamp('2026-04-12'), nomaux='LIDZ SPA'),
+    dict(e='IVCB1', t='33', n=5, a='11111111', c='00000302', f=pd.Timestamp('2026-04-10'), s='V', m=-5000, gc='5-1', gd='G', ccd='O', fd=pd.Timestamp('2026-04-08'), nomaux='X'),
+    dict(e='IVCB5', t='33', n=3000, a='76713281', c='00000400', f=pd.Timestamp('2026-06-10'), s='V', m=-5000, gc='5-1', gd='G', ccd='O', fd=pd.Timestamp('2026-06-08'), nomaux='LIDZ SPA')])
+o3 = {(o['fo'], o['t']): o for o in cr.cruzar(ic, sf2, pay, opn, f9, '2026-10-07', sii, '2026')}
+ss = o3[(2754, 'Factura')]
+assert ss['eic'] == 'Solo Softland' and ss['sii'] == 'Aceptada (Hist)' and ss['sf'] == 'Contabilizada' and ss['tot'] == 119000 and ss['rut'] == '76713281-6', ss
+assert 'neto' not in ss and ss['fe'] == '2026-04-08' and ss['rs'] == 'Trei Inmobiliaria SpA'
+assert o3[(77, 'Nota de crédito')]['tot'] == -11900 and 'sii' not in o3[(77, 'Nota de crédito')]
+assert (5, 'Factura') not in o3 and (3000, 'Factura') not in o3, 'ni IVCB1 ni fuera del rango ene-abr'
+
 # render de las dos variantes
 class A: desde = '2026-01-01'; hasta = '2026-10-08'; corte = '2026-10-07'
 from datetime import datetime
