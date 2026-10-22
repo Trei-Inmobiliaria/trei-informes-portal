@@ -157,7 +157,7 @@ td.neg{color:var(--bad)}
     <div><b>OC / referencia</b>: la OC proviene de las recepciones asociadas a la factura en IConstruye; «El proveedor refirió» muestra el código tal como lo informó el proveedor en el DTE (OC, contrato, etc.), útil para detectar referencias incompletas, por ejemplo un contrato «1700-30» cuando corresponde «1700-30-X».</div>
     <div><b>Softland</b>: «Contabilizada» = comprobante vigente en Softland. «Pendiente de contabilizar» = aún sin registrar. <span class="noscope">«Pendiente empresa Softland» = la sociedad del documento no está en Softland; cuenta como pendiente. </span>«No aplica» = rechazada en el SII o comprobante provisorio o nulo (el detalle aparece al pasar el mouse). Los «No aplica» no cuentan como pendientes ni en la antigüedad.</div>
     <div>Cruce con Softland por empresa + tipo de documento + folio + RUT del proveedor, contra comprobantes vigentes (cpbest = V) desde nov-2025. Cuando el monto del pasivo en Softland difiere del total del DTE, el detalle muestra el monto Softland.</div>
-    <div><b>Pago (Softland)</b>: «Pagada» = pagada con egreso, cerrada con comprobante de traspaso o pagada a un factoring. «Pagada sin referencia» = el saldo del auxiliar en Proveedores (2-1-02, sin empresas relacionadas 103) ya no alcanza para este documento, asignando el saldo a los documentos más recientes (FIFO), pero ningún egreso cita el folio. «Pago parcial» = abonada en parte, con saldo. «Pendiente de pago» = por pagar al proveedor (En Proveedores) o al factoring (En Factoring: factura traspasada a la cuenta 2-1-02-109). «No aplica» = sin contabilizar, rechazada en el SII o nota de crédito. El estado exacto está en el detalle de la fila y en el Excel. Softland (contabilización y pagos): último comprobante cargado al <span id="fpagos">—</span>.</div>
+    <div><b>Pago (Softland)</b>: «Pagada» = pagada con egreso, cerrada con comprobante de traspaso o pagada a un factoring. «Pagada sin referencia» = el saldo del auxiliar en Proveedores (2-1-02, sin empresas relacionadas 103) ya no alcanza para este documento, asignando el saldo a los documentos más recientes (FIFO), pero ningún egreso cita el folio. «Pago parcial» = abonada en parte, con saldo. «Pendiente de pago» = por pagar al proveedor (En Proveedores) o al factoring (En Factoring: factura traspasada a la cuenta 2-1-02-109). «Neteada por NC» = la factura quedó anulada por una o más notas de crédito contabilizadas: no se pagó ni se debe, y no suma a «Pagadas». Si la NC cubre solo una parte, el saldo se rebaja en ese monto. La NC se asocia a su factura por el calce de Softland («CALCE NCE n» / «FACTURA n») y, si no hay calce, por la referencia del DTE. La fila de la nota de crédito indica a qué factura se aplicó. «No aplica» = sin contabilizar o rechazada en el SII. El estado exacto está en el detalle de la fila y en el Excel. Softland (contabilización y pagos): último comprobante cargado al <span id="fpagos">—</span>.</div>
     <div>Estado de pago IConstruye: campo de la factura en el flujo de compras; los documentos que solo están en la bandeja DTE no lo tienen. «≠» marca diferencia entre IConstruye y Softland.</div>
     <div>Cuenta y centro de costo = línea de mayor monto del comprobante contable, excluidos pasivos e IVA crédito. Notas de crédito en negativo.</div>
   </div>
@@ -184,9 +184,9 @@ const sfTip=o=>o.sf==='Rechazada en SII'?'Rechazada en el SII: no corresponde co
   :o.sf==='Pendiente de contabilizar'?'Aún no registrado por Contabilidad':'Contabilizada en Softland';
 const sfPill=g=>g==='Contabilizada'?'p-ok':g==='No aplica'?'p-neu':'p-warn';
 const isPend=o=>o.sfg==='Pendiente de contabilizar'||o.sfg==='Pendiente empresa Softland';
-const psG=o=>{const s=o.ps; return s==='Pagada sin referencia'?'Pagada sin referencia':(s==='Pagada (egreso)'||s==='Cancelada por traspaso'||s==='Pagada a factoring')?'Pagada':s==='Pago parcial'?'Pago parcial':(s==='En Proveedores'||s==='En Factoring')?'Pendiente de pago':'No aplica'};
-const psTip=o=>({'Pagada (egreso)':'Pagada con egreso en Softland','Cancelada por traspaso':'Cerrada con comprobante de traspaso, sin egreso','Pagada a factoring':'Cedida a factoring y ya pagada al factoring','Pagada sin referencia':'Saldo del proveedor cubierto, pero ningún egreso cita el folio','Pago parcial':'Abonada en parte; queda saldo','En Proveedores':'Por pagar al proveedor','En Factoring':'Por pagar al factoring','Sin contabilizar':'Sin contabilizar: aún no puede tener pago','Nota de crédito':'Nota de crédito: descuento a favor, no se paga','Rechazada en SII':'Rechazada en el SII: no corresponde pago'}[o.ps]||'');
-const psgPill=g=>g==='Pagada'||g==='Pagada sin referencia'?'p-ok':g==='Pago parcial'?'p-warn':g==='Pendiente de pago'?'p-bad':'p-neu';
+const psG=o=>{const s=o.ps; return s==='Pagada sin referencia'?'Pagada sin referencia':(s==='Pagada (egreso)'||s==='Cancelada por traspaso'||s==='Pagada a factoring')?'Pagada':s==='Pago parcial'?'Pago parcial':s==='Neteada por NC'?'Neteada por NC':(s==='En Proveedores'||s==='En Factoring')?'Pendiente de pago':'No aplica'};
+const psTip=o=>({'Pagada (egreso)':'Pagada con egreso en Softland','Cancelada por traspaso':'Cerrada con comprobante de traspaso, sin egreso','Pagada a factoring':'Cedida a factoring y ya pagada al factoring','Pagada sin referencia':'Saldo del proveedor cubierto, pero ningún egreso cita el folio','Pago parcial':'Abonada en parte; queda saldo','Neteada por NC':'Anulada por nota(s) de crédito: no se pagó ni se debe','En Proveedores':'Por pagar al proveedor','En Factoring':'Por pagar al factoring','Sin contabilizar':'Sin contabilizar: aún no puede tener pago','Nota de crédito':'Nota de crédito: descuento a favor, no se paga','Rechazada en SII':'Rechazada en el SII: no corresponde pago'}[o.ps]||'');
+const psgPill=g=>g==='Pagada'||g==='Pagada sin referencia'?'p-ok':g==='Pago parcial'?'p-warn':g==='Neteada por NC'?'p-neu':g==='Pendiente de pago'?'p-bad':'p-neu';
 const eisPill=e=>e==='Aprobada'?'p-ok':(e==='Rechazada'||e==='Cancelada')?'p-bad':(e==='Sin registro'||e==='Solo Softland')?'p-neu':'p-warn';
 const siiPill=e=>e.startsWith('Aceptada')?'p-ok':e==='Rechazada'?'p-bad':'p-neu';
 const pill = e => e==='Contabilizada'?'p-ok':e==='Pendiente de contabilizar'?'p-warn':e==='Rechazada en SII'?'p-bad':'p-neu';
@@ -202,12 +202,12 @@ const MES_C = MESES[+META.corte.slice(5,7)-1];
 const MES_CORTO = MES_C.slice(0,3).toLowerCase();
 const fdt = t => t? fd(t.slice(0,10))+' '+t.slice(11,16):'—';
 const dias = s => s? Math.round((HOY-new Date(s))/864e5):null;
-DATA.forEach(o=>{o.mes=o.fe?o.fe.slice(0,7):'';o.sfg=sfG(o); o.age=(o.sf==='Pendiente de contabilizar'||o.sf==='Sin empresa en Softland')?dias(o.fe):null; o.eics=o.eic?(EIC_MAP[o.eic]||o.eic):'Sin registro'; o.sii=o.sii||'—'; o.siig=siiG(o); o.psg=psG(o); o.cpet=o.cpe==='P'?'Provisorio':o.cpe==='N'?'Nulo':''; o.egn=(o.eg||[]).map(x=>x.split(' · ')[0]); o.lag=o.fc&&o.fe?Math.round((new Date(o.fc)-new Date(o.fe))/864e5):null;
-  o.hay=[o.ps,o.psg,o.sfg,o.siig,o.oc,o.refp,o.sii,o.siim,o.eics,o.egn.join(' '),o.pago,(o.eg||[]).join(' '),o.mes?mesNom(o.mes):'',o.fo,o.pv,o.rut,o.rs,o.cg,o.cgc,o.cta,o.cc,o.cpb,o.t,o.ap,o.eic].join(' ').toLowerCase()});
+DATA.forEach(o=>{o.mes=o.fe?o.fe.slice(0,7):'';o.sfg=sfG(o); o.age=(o.sf==='Pendiente de contabilizar'||o.sf==='Sin empresa en Softland')?dias(o.fe):null; o.eics=o.eic?(EIC_MAP[o.eic]||o.eic):'Sin registro'; o.sii=o.sii||'—'; o.siig=siiG(o); o.psg=psG(o); o.nct=(o.t==='Factura'||o.t==='Factura exenta')?(o.nc?o.nc.map(x=>x.split(' · ')[0]).join(', '):'Sin NC'):''; o.cpet=o.cpe==='P'?'Provisorio':o.cpe==='N'?'Nulo':''; o.egn=(o.eg||[]).map(x=>x.split(' · ')[0]); o.lag=o.fc&&o.fe?Math.round((new Date(o.fc)-new Date(o.fe))/864e5):null;
+  o.hay=[o.ps,o.psg,(o.nc||[]).join(' '),(o.ncap||[]).join(' '),o.sfg,o.siig,o.oc,o.refp,o.sii,o.siim,o.eics,o.egn.join(' '),o.pago,(o.eg||[]).join(' '),o.mes?mesNom(o.mes):'',o.fo,o.pv,o.rut,o.rs,o.cg,o.cgc,o.cta,o.cc,o.cpb,o.t,o.ap,o.eic].join(' ').toLowerCase()});
 
 if(SCOPE){ document.getElementById('panelRs').style.display='none';  document.querySelectorAll('.noscope').forEach(e=>e.style.display='none'); }
 
-const PS=['Pagada','Pagada sin referencia','Pago parcial','Pendiente de pago','No aplica'];
+const PS=['Pagada','Pagada sin referencia','Pago parcial','Pendiente de pago','Neteada por NC','No aplica'];
 const PIC=['Totalmente Pagado','Parcialmente Pagado','Sin Pago'];
 const psPill=s=>s==='Rechazada en SII'?'p-bad':s.startsWith('Pagada')||s.startsWith('Cancelada')?'p-ok':s==='Pago parcial'||s==='En Factoring'?'p-warn':s==='En Proveedores'?'p-bad':'p-neu';
 const isPaidSF=s=>s.startsWith('Pagada')||s.startsWith('Cancelada');
@@ -266,13 +266,18 @@ function fillSelects(){
   document.getElementById('psf').innerHTML=opt(PS,st.psf,'Todos');
   document.getElementById('clearBtn').hidden=!(st.mes||st.rs||st.sii||st.eis||st.cf||st.psf||st.q);
 }
-const COLS=[['fe','Documento',1,10],['oc','OC / referencia',1,12],['rs','Empresa / obra',1,13],['pv','Proveedor',1,15],['tot','Total CLP',0,8],['siig','Estado SII',1,12],['eics','Estado IConstruye',1,10],['sfg','Softland',1,11],['psg','Pago',1,9]];
+const COLS=[['fe','Documento',1,9],['oc','OC / referencia',1,10],['rs','Empresa / obra',1,11],['pv','Proveedor',1,12],['tot','Total CLP',0,8],['nct','Notas de crédito',1,9],['siig','Estado SII',1,10],['eics','Estado IConstruye',1,9],['sfg','Softland',1,10],['psg','Pago',1,12]];
+const ncCell=o=>{
+  if(o.t!=='Factura'&&o.t!=='Factura exenta') return '<span class="sub">—</span>';
+  if(!o.nc) return '<span class="sub">Sin NC</span>';
+  return o.nc.map(x=>{const q=x.split(' · ');return `<div>NC ${esc(q[0])} <b style="color:var(--bad)">${esc(q[1].replace('-','−'))}</b>${q[2]==='sin contabilizar'?'<div class="sub">sin contabilizar</div>':''}</div>`}).join('');
+};
 function renderDoc(rows){
   rows=[...rows].sort((a,b)=>{const x=a[st.sort]??'',y=b[st.sort]??'';return (x>y?1:x<y?-1:0)*st.dir});
   const pages=Math.max(1,Math.ceil(rows.length/PAGE)); st.page=Math.min(st.page,pages-1);
   const sl=rows.slice(st.page*PAGE,(st.page+1)*PAGE);
   let h=`<div class="tblwrap"><table><colgroup>${COLS.map(c=>`<col style="width:${c[3]}%">`).join('')}</colgroup><thead><tr>${COLS.map(([k,t,l])=>`<th class="${l?'l':''}" data-s="${k}">${t}${st.sort===k?(st.dir>0?' ↑':' ↓'):''}</th>`).join('')}</tr></thead><tbody>`;
-  if(!sl.length) h+='<tr><td colspan="9" class="empty">No hay documentos que coincidan con la búsqueda</td></tr>';
+  if(!sl.length) h+='<tr><td colspan="10" class="empty">No hay documentos que coincidan con la búsqueda</td></tr>';
   sl.forEach(o=>{const k=key(o), op=st.open.has(k);
     h+=`<tr class="oc${op?' open':''}" data-k="${esc(k)}" tabindex="0" aria-expanded="${op}">
       <td><div class="ocn">${op?'▾':'▸'} ${o.fo}</div><div class="sub">${esc(o.t)} · ${fd(o.fe)}</div></td>
@@ -280,11 +285,12 @@ function renderDoc(rows){
       <td>${esc(o.rs)}<div class="sub">${esc(o.cg||'—')}</div></td>
       <td>${esc(o.pv)}<div class="sub">${esc(o.rut)}</div></td>
       <td class="num${o.tot<0?' neg':''}">${fmt(o.tot)}</td>
+      <td>${ncCell(o)}</td>
       <td>${o.sii==='—'?'<span class="sub">—</span>':`<span class="pill ${siiPill(o.sii)}${(o.sii==='Aceptada (Aut)'||o.sii==='Aceptada (Cont)'||o.sii==='Aceptada (Hist)')?' aut':''}" title="${esc(siiTip(o))}">${esc(o.siig)}</span>`}${o.siim?`<div class="sub motivo">${esc(o.siim)}</div>`:''}</td>
       <td>${o.eic?`<span class="pill ${eisPill(o.eics)}">${esc(o.eics)}</span>`:'<span class="sub">Solo bandeja DTE</span>'}</td>
       <td><span class="pill ${sfPill(o.sfg)}" title="${esc(sfTip(o))}">${esc(o.sfg==='Pendiente de contabilizar'?'Pendiente':o.sfg)}</span>${o.fc?`<div class="sub">${fd(o.fc)} · Cpbte ${esc(o.cpb)}</div>`:''}${o.age!=null?`<div class="age${o.age>15?' old':''}">${o.age} días</div>`:''}</td>
-      <td><span class="pill ${psgPill(o.psg)}" title="${esc(psTip(o))}">${esc(o.psg)}</span>${o.egn.length?`<div class="sub">Egreso ${esc(o.egn.join(', '))}</div>`:''}${(!o.egn.length&&o.trs)?`<div class="sub">Traspaso ${esc(o.trs.map(x=>x.split(' · ')[0]).join(', '))}</div>`:''}${o.saldo?`<div class="sub">Saldo ${fmt(o.saldo)}</div>`:''}${o.fact?`<div class="sub">${esc(o.fact)}</div>`:''}${o.cesx?'<div class="sub" style="color:var(--bad)">Cedida SII sin factoring</div>':''}${difPago(o)?'<div class="sub" style="color:var(--bad)">≠ IConstruye: '+esc(o.pago)+'</div>':''}</td></tr>`;
-    if(op){h+=`<tr class="det"><td colspan="9"><div class="detgrid">
+      <td><span class="pill ${psgPill(o.psg)}" title="${esc(psTip(o))}">${esc(o.ps==='Nota de crédito'?(o.ncap?'Aplicada a factura '+o.ncap.map(x=>x.split(' · ')[0]).join(', '):'Sin factura asociada'):o.psg)}</span>${o.egn.length?`<div class="sub">Egreso ${esc(o.egn.join(', '))}</div>`:''}${(!o.egn.length&&o.trs)?`<div class="sub">Traspaso ${esc(o.trs.map(x=>x.split(' · ')[0]).join(', '))}</div>`:''}${o.saldo?`<div class="sub">Saldo ${fmt(o.saldo)}</div>`:''}${o.fact?`<div class="sub">${esc(o.fact)}</div>`:''}${o.cesx?'<div class="sub" style="color:var(--bad)">Cedida SII sin factoring</div>':''}${difPago(o)?'<div class="sub" style="color:var(--bad)">≠ IConstruye: '+esc(o.pago)+'</div>':''}</td></tr>`;
+    if(op){h+=`<tr class="det"><td colspan="10"><div class="detgrid">
       <div><span>Recepción IConstruye</span>${fd(o.fi)}</div>
       <div><span>Vencimiento</span>${fd(o.fv)}</div>
       <div><span>Neto / exento</span>${fmt(o.neto)}</div>
@@ -298,6 +304,8 @@ function renderDoc(rows){
       <div><span>Fecha evento SII / última consulta</span>${fd(o.siif)} / ${fdt(o.siic)}</div>
       <div><span>Estado IConstruye</span>${esc(o.eic?o.eics:'Sin registro (solo bandeja DTE)')}</div>
       ${o.ref?`<div><span>Documento de referencia</span>${esc(o.ref)}</div>`:''}
+      ${o.nc?`<div><span>Notas de crédito aplicadas</span>${esc(o.nc.map(x=>'NC '+x).join(' | '))}${o.ncm?' — neteado '+fmt(o.ncm):''}</div>`:''}
+      ${o.ncap?`<div><span>Esta nota de crédito se aplicó a</span>${esc(o.ncap.map(x=>'factura '+x).join(' | '))}</div>`:''}
       ${o.msf!=null?`<div><span>Monto pasivo Softland</span><b style="color:var(--bad)">${fmt(o.msf)}</b> (difiere del DTE)</div>`:''}
       <div><span>Comprobante Softland</span>${o.cpb?esc(o.emp+' · '+o.cpb+' · '+fd(o.fc)):'—'}</div>
       <div><span>Días emisión → contabilización</span>${o.lag??'—'}</div>
@@ -332,7 +340,7 @@ function renderAgg(rows,kind){
   const T=arr.reduce((s,[k,a])=>{for(const f of ['n','t','cn','ct','pn','pt','gn','sp','sf'])s[f]+=a[f];return s},{n:0,t:0,cn:0,ct:0,pn:0,pt:0,gn:0,sp:0,sf:0});
   const row=(k,a,tot)=>`<tr${tot?' class="tot"':''}><td>${tot?'TOTAL':'<b>'+esc(kind==='mes'?mesNom(k):k)+'</b>'}</td>${kind==='pv'?`<td class="sub">${esc(a.x||'')}</td>`:''}<td class="num">${a.n}</td><td class="num">${fmt(a.t)}</td><td class="num">${a.cn}</td><td class="num">${a.pn}</td><td class="num">${a.n?Math.round(a.cn/a.n*100):0}%</td><td class="num">${a.gn}</td><td class="num">${fmt(a.sp)}</td><td class="num">${fmt(a.sf)}</td></tr>`;
   return `<div class="tblwrap"><table><thead><tr><th class="l">${kind==='rs'?'Razón social':kind==='mes'?'Mes de emisión':'Proveedor'}</th>${kind==='pv'?'<th class="l">RUT</th>':''}<th>Docs</th><th>Total recibido</th><th>Contab.</th><th>Pend.</th><th>% contab.</th><th>Pagadas</th><th>Saldo en Proveedores</th><th>Saldo en Factoring</th></tr></thead><tbody>
-  ${arr.length?arr.map(([k,a])=>row(k,a)).join('')+row('',T,1):'<tr><td colspan="9" class="empty">Sin datos para los filtros actuales</td></tr>'}</tbody></table></div>`;
+  ${arr.length?arr.map(([k,a])=>row(k,a)).join('')+row('',T,1):'<tr><td colspan="10" class="empty">Sin datos para los filtros actuales</td></tr>'}</tbody></table></div>`;
 }
 function applyRs(){
   const b=document.getElementById('rsBody'), t=document.getElementById('rsToggle');
@@ -357,7 +365,7 @@ const EXP_COLS=[['rs','Razón social'],['t','Tipo'],['fo','Folio'],['pv','Provee
   ['psg','Pago Softland'],['pagado','Pagado'],['saldo','Saldo'],['fact','Factoring'],['ces','Cesión SII'],
   ['eg','Egresos'],['fpag','Pagos a factoring'],['ap','Aprobadores IC'],
   ['oc','OC'],['refp','Referencia del proveedor'],['siig','Estado SII'],['siim','Motivo rechazo SII'],['siif','Fecha evento SII'],['siic','Última consulta SII'],
-  ['sii','Detalle Estado SII'],['sf','Detalle Estado Softland'],['cpet','Tipo comprobante no vigente'],['ps','Detalle Pago Softland']];
+  ['sii','Detalle Estado SII'],['sf','Detalle Estado Softland'],['cpet','Tipo comprobante no vigente'],['ps','Detalle Pago Softland'],['nc','Notas de crédito'],['ncm','Monto neteado por NC'],['ncap','NC aplicada a factura']];
 function toXlsx(){
   const rows=filtered(false);
   const btn=document.getElementById('exportBtn'); btn.disabled=true; btn.textContent='Generando…';
@@ -365,13 +373,14 @@ function toXlsx(){
     const head=EXP_COLS.map(([,t])=>t);
     const body=rows.map(o=>EXP_COLS.map(([k])=>{
       let v=o[k]; if(Array.isArray(v)) v=v.join(' | '); if((k==='sii'||k==='siig')&&v==='—') v='';
+      if(k==='nc'&&v==null&&(o.t==='Factura'||o.t==='Factura exenta')) v='Sin NC';
       if(['fe','fi','fv','fpi','fep','fc','siif'].includes(k)&&v) return new Date(v+'T00:00:00');
       return v==null?'':v;
     }));
     const ws=XLSX.utils.aoa_to_sheet([head,...body]);
     const n=rows.length;
     for(let r=1;r<=n;r++){ const c=XLSX.utils.encode_cell({r,c:10}); if(ws[c]&&typeof ws[c].v==='number'){ws[c].z='#,##0'}
-      for(const col of [8,9,23,24]){ const cc=XLSX.utils.encode_cell({r,c:col}); if(ws[cc]&&typeof ws[cc].v==='number') ws[cc].z='#,##0'; }
+      for(const col of [8,9,23,24,41]){ const cc=XLSX.utils.encode_cell({r,c:col}); if(ws[cc]&&typeof ws[cc].v==='number') ws[cc].z='#,##0'; }
       for(const col of [5,6,7,14,15,19,34]){ const cc=XLSX.utils.encode_cell({r,c:col}); if(ws[cc]&&ws[cc].v instanceof Date) ws[cc].z='dd-mm-yyyy'; }
     }
     ws['!cols']=EXP_COLS.map(([k])=>({wch:k==='rs'||k==='pv'||k==='cg'||k==='cta'||k==='eg'||k==='fpag'?32:k==='pv'?30:16}));

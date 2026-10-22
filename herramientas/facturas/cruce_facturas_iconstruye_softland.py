@@ -217,6 +217,15 @@ select empresa e, codaux a, ttdcod t, numdoc n, round(amt) amt, round(pe) pe, ro
 from d3 where ttdcod in ('33','34','56')
 """
 
+# Calces de notas de crédito: comprobantes de Proveedores cuya glosa dice «CALCE NCE <folio>» (crédito) y «FACTURA <folio>» (débito)
+SQL_SF_CALCE = """
+select m.empresa e, m.cpbnum c, m.codaux a, m.movglosa g, round(m.movdebe) d, round(m.movhaber) h
+from grupo.movimientos m join grupo.comprobantes c using (empresa,cpbano,cpbnum,areacod)
+where m.cpbano=%(anio)s and c.cpbest='V' and m.pctcod like '2-1-02%%'
+  and (m.empresa,m.cpbano,m.cpbnum,m.areacod) in (
+      select empresa,cpbano,cpbnum,areacod from grupo.movimientos where cpbano=%(anio)s and movglosa ~* '^\\s*calce\\s+n[a-z]*\\s*[0-9]+')
+"""
+
 # Movimientos de la cuenta 2-1-02-109 Cuentas por Pagar a Factoring (cesión, refactoring y pago)
 SQL_SF_FACTORING = """
 select m.empresa e, m.cpbnum c, c.cpbtip k, m.cpbfec::date f, m.pctcod p, m.codaux a, m.ttdcod t, m.numdoc::bigint n,
@@ -251,7 +260,10 @@ def extraer(a):
     pay = query(sf_url, SQL_SF_PAGOS, p)
     opn = query(sf_url, SQL_SF_ABIERTO, p)
     f9 = query(sf_url, SQL_SF_FACTORING, p)
-    return ic, sf, pay, opn, f9, sii
+    try: calce = query(sf_url, SQL_SF_CALCE, p)
+    except Exception as e:
+        print('  AVISO: no se pudieron leer los calces de NC:', e); calce = pd.DataFrame()
+    return ic, sf, pay, opn, f9, sii, calce
 
 
 # ------------------------------------------------------------------ cruce y clasificación
@@ -311,7 +323,32 @@ def estados_sii(sii):
     return res
 
 
-def cruzar(ic, sf, pay, opn, f9, corte, sii=None, anio=None):
+def enlaces_calce(calce):
+    """{(emp, aux, folio_NC): [(folio_factura, monto)]} leído de los calces de Softland (glosas «CALCE NCE n» / «FACTURA n»).
+    Dentro de cada comprobante y proveedor se parean primero montos iguales y el resto en orden."""
+    res = {}
+    if calce is None or len(calce) == 0: return res
+    c = calce.copy(); c['aux'] = c.a.astype(str).str.lstrip('0')
+    for (e, cp, aux), g in c.groupby(['e', 'c', 'aux']):
+        ncs, facs = [], []
+        for r in g.itertuples():
+            m = re.match(r'^\s*calce\s+n[a-z]*\s*(\d+)', r.g or '', re.I)
+            if m and r.h > 0: ncs.append([int(m.group(1)), float(r.h)]); continue
+            m = re.match(r'^\s*factura\s+(\d+)', r.g or '', re.I)
+            if m and r.d > 0: facs.append([int(m.group(1)), float(r.d)])
+        for nc in ncs:                        # montos iguales primero
+            for f in facs:
+                if f[1] > 0 and abs(f[1] - nc[1]) <= TOL:
+                    res.setdefault((e, aux, nc[0]), []).append((f[0], f[1])); f[1] = 0; nc[1] = 0; break
+        for nc in ncs:                        # resto en orden
+            for f in facs:
+                if nc[1] <= TOL: break
+                if f[1] > TOL:
+                    u = min(nc[1], f[1]); res.setdefault((e, aux, nc[0]), []).append((f[0], u)); nc[1] -= u; f[1] -= u
+    return res
+
+
+def cruzar(ic, sf, pay, opn, f9, corte, sii=None, anio=None, calce=None):
     est_sii = estados_sii(sii)
     # --- IConstruye
     ic = ic.copy()
@@ -388,6 +425,47 @@ def cruzar(ic, sf, pay, opn, f9, corte, sii=None, anio=None):
         if r.h > 0: a['nom'] = nom or a['nom']; a['ces'].append(f"{r.c} · {_ddmmyyyy(r.f)} · {nom} · {_fmt(r.h)}")
         if r.k == 'E' and r.d > 0: a['pg'].append(f"{r.c} · {_ddmmyyyy(r.f)} · {nom} · {_fmt(r.d)}")
 
+    # --- notas de crédito aplicadas a facturas: calce de Softland si existe; si no, referencia del DTE
+    calces = enlaces_calce(calce)
+    nc_estado = {(q.emp, q.aux, q.folio): q.est_sf for q in x[x.tipo == '61'].itertuples()}
+    nc_monto = {(q.emp, q.aux, q.folio): abs(q.tot) for q in x[x.tipo == '61'].itertuples()}
+    nc_a_fac = {}   # (emp, aux, folio_NC) -> [(folio_factura, monto, origen)]
+    for kk, lst in calces.items(): nc_a_fac[kk] = [(f, m, 'calce') for f, m in lst]
+    for q in x[x.tipo == '61'].itertuples():
+        kk = (q.emp, q.aux, q.folio)
+        if kk in nc_a_fac or pd.isna(q.tipo_documento_referencia) or pd.isna(q.folio_documento_referencia): continue
+        if int(float(q.tipo_documento_referencia)) in (33, 34):
+            nc_a_fac[kk] = [(int(float(q.folio_documento_referencia)), abs(q.tot), 'DTE')]
+    fac_nc = {}     # (emp, aux, folio_factura) -> [dict(f, m, o, cont)]
+    for (e, aux, fn), lst in nc_a_fac.items():
+        for f, m, origen in lst:
+            cont = nc_estado.get((e, aux, fn), 'Contabilizada') == 'Contabilizada'   # NC solo de calce (fuera del universo): ya contabilizada
+            fac_nc.setdefault((e, aux, int(f)), []).append(dict(f=int(fn), m=float(m), o=origen, c=cont))
+
+    base_doc = {(q.emp, q.aux, q.tipo, int(q.folio)): (abs(q.m) if pd.notna(q.m) else abs(q.tot))
+                for q in x[(x.est_sf == 'Contabilizada') & x.tipo.isin(['33', '34'])].itertuples()}
+    ncap = {}       # (emp, aux, folio_factura) -> monto neteado por NC contabilizadas (tope: el monto de la factura)
+    for (e, aux, fo), lst in fac_nc.items():
+        b = base_doc.get((e, aux, '33', fo), base_doc.get((e, aux, '34', fo)))
+        if b is None: continue
+        tot = 0
+        for n in lst:
+            n['u'] = round(min(n['m'], max(0, b - tot))) if n['c'] else 0
+            tot += n['u']
+        if tot: ncap[(e, aux, fo)] = tot
+    # el saldo FIFO se reparte de nuevo entre los documentos de cada proveedor con NC aplicadas, descontando lo neteado
+    afect = {(e, aux) for (e, aux, fo) in ncap}
+    if afect and len(opn):
+        fe_doc = {(q.emp, q.aux, q.tipo, int(q.folio)): str(q.fe)[:10] for q in x.itertuples()}
+        for (e, aux), grp in opn.groupby(['e', 'aux']):
+            if (e, aux) not in afect: continue
+            S = grp.abierto.sum(); newer = 0
+            gg = grp.assign(fe=[fe_doc.get((e, aux, str(t), int(n)), '1900') for t, n in zip(grp.t, grp.n)]).sort_values(['fe', 'n'], ascending=False)
+            for i, q in gg.iterrows():
+                rem = max(0, q.amt - q.pe - q.pt - q.pf - ncap.get((e, aux, int(q.n)), 0))
+                a = max(0, min(rem, S - newer)); opn.at[i, 'abierto'] = round(a); newer += rem
+        opmap = {(q.e, q.aux, str(q.t), int(q.n)): q for q in opn.itertuples()}
+
     # --- armado del registro por documento
     out = []
     for _, r in x.iterrows():
@@ -430,6 +508,10 @@ def cruzar(ic, sf, pay, opn, f9, corte, sii=None, anio=None):
         if str(r.pg) == 'SI': o['fpi'] = _d(r.fp)
         o['fep'] = _d(r.fep)
 
+        ncs = fac_nc.get((r.emp, r.aux, int(r.folio))) if r.tipo in ('33', '34') else None
+        if ncs:
+            o['nc'] = [f"{n['f']} · -{_fmt(n['m'])}" + ('' if n['c'] else ' · sin contabilizar') + (' · calce' if n['o'] == 'calce' else ' · ref. DTE') for n in ncs]
+            if ncap.get((r.emp, r.aux, int(r.folio))): o['ncm'] = ncap[(r.emp, r.aux, int(r.folio))]
         if r.tipo == '61':
             ps = 'Nota de crédito'
         elif r.est_sf == 'Pendiente de contabilizar' and o.get('sii') == 'Rechazada':
@@ -439,6 +521,7 @@ def cruzar(ic, sf, pay, opn, f9, corte, sii=None, anio=None):
         else:
             base = abs(r.m) if pd.notna(r.m) else abs(r.tot)
             key = (r.emp, r.aux, r.tipo, int(r.folio))
+            nc_ap = ncap.get((r.emp, r.aux, int(r.folio)), 0) if r.tipo in ('33', '34') else 0
             a = agg.get(key)
             if a:
                 if a['eg']: o['eg'] = a['eg']
@@ -448,11 +531,15 @@ def cruzar(ic, sf, pay, opn, f9, corte, sii=None, anio=None):
             tt = q.pt if q is not None else 0
             pf = q.pf if q is not None else 0
             ab = q.abierto if q is not None else base
+            if nc_ap:                       # la NC rebaja lo que se debe a esta factura: no se asigna saldo por FIFO
+                base_ncx = base; base = max(0, base - nc_ap); ab = min(ab, max(0, base - e - tt)) if base > TOL else 0
             fa = fmap.get((r.emp, int(r.folio))) if pf > 0 else None
             if fa:
                 o['fact'] = fa['nom']; o['fces'] = fa['ces']
                 if fa['pg']: o['fpag'] = fa['pg']
-            if pf > 0 and e + tt < base - TOL:            # cedida a factoring
+            if nc_ap and base <= TOL and e + tt <= TOL:
+                ps = 'Neteada por NC'
+            elif pf > 0 and e + tt < base - TOL:            # cedida a factoring
                 fs = max(0, fa['s']) if fa else pf
                 if fs <= TOL: ps = 'Pagada a factoring'
                 else: ps = 'En Factoring'; o['saldo'] = round(fs)
@@ -464,8 +551,11 @@ def cruzar(ic, sf, pay, opn, f9, corte, sii=None, anio=None):
                 ps = 'Pago parcial'; o['saldo'] = round(ab)
             else:
                 ps = 'En Proveedores'; o['saldo'] = round(ab)
-            o['pagado'] = round(base - o.get('saldo', 0))
+            o['pagado'] = 0 if ps == 'Neteada por NC' else round(base - o.get('saldo', 0))
         o['ps'] = ps
+        if r.tipo == '61':     # a qué factura se aplicó esta nota de crédito
+            ap = nc_a_fac.get((r.emp, r.aux, int(r.folio)))
+            if ap: o['ncap'] = [f"{f} · {_fmt(m)}" + (' · calce' if orig == 'calce' else ' · ref. DTE') for f, m, orig in ap]
         if o.get('ces') and ps not in ('En Factoring', 'Pagada a factoring', 'Nota de crédito'):
             o['cesx'] = 1   # cedida en SII pero no traspasada a Factoring en Softland
         out.append({kk: vv for kk, vv in o.items() if vv is not None})
@@ -484,7 +574,8 @@ def excel(out, ruta):
             ('ps', 'Pago Softland'), ('pagado', 'Pagado'), ('saldo', 'Saldo'), ('fact', 'Factoring'), ('ces', 'Cesión SII'),
             ('eg', 'Egresos'), ('fpag', 'Pagos a factoring'), ('ap', 'Aprobadores IC'),
             ('oc', 'OC'), ('refp', 'Referencia del proveedor'), ('sii', 'Estado SII'), ('siim', 'Motivo rechazo SII'),
-            ('siif', 'Fecha evento SII'), ('siic', 'Última consulta SII')]
+            ('siif', 'Fecha evento SII'), ('siic', 'Última consulta SII'),
+            ('nc', 'Notas de crédito'), ('ncm', 'Monto neteado por NC'), ('ncap', 'NC aplicada a factura')]
     wb = Workbook(); ws = wb.active; ws.title = 'Detalle'
     F = Font(name='Calibri', size=10)
     ws.append([c[1].upper() for c in cols])
@@ -496,6 +587,7 @@ def excel(out, ruta):
         for kk, _ in cols:
             v = o.get(kk)
             if isinstance(v, list): v = ' | '.join(v)
+            if kk == 'nc' and v is None and o['t'] in ('Factura', 'Factura exenta'): v = 'Sin NC'
             if kk in ('fe', 'fi', 'fv', 'fpi', 'fep', 'fc', 'siif') and v: v = date.fromisoformat(v)
             row.append(v)
         ws.append(row)
@@ -558,8 +650,8 @@ def main():
     a = ap.parse_args()
     os.makedirs(a.salida, exist_ok=True)
 
-    ic, sf, pay, opn, f9, sii = extraer(a)
-    out = cruzar(ic, sf, pay, opn, f9, a.corte, sii, a.desde[:4])
+    ic, sf, pay, opn, f9, sii, calce = extraer(a)
+    out = cruzar(ic, sf, pay, opn, f9, a.corte, sii, a.desde[:4], calce)
     meta = armar_meta(out, a, hoy)
 
     json.dump(dict(meta=meta, datos=out), open(os.path.join(a.salida, 'facturas_cruce.json'), 'w', encoding='utf-8'),

@@ -58,6 +58,32 @@ assert 'neto' not in ss and ss['fe'] == '2026-04-08' and ss['rs'] == 'Trei Inmob
 assert o3[(77, 'Nota de crédito')]['tot'] == -11900 and 'sii' not in o3[(77, 'Nota de crédito')]
 assert (5, 'Factura') not in o3 and (3000, 'Factura') not in o3, 'ni IVCB1 ni fuera del rango ene-abr'
 
+# Notas de crédito: caso Comp. Gráfica (IVCB5): 3 facturas de 3.283.355 y 2 NC aplicadas por calce a 55775 y 55829
+R5 = '76660193-6'; PROV = '79770640-K'
+def d5(folio, tipo, fe, ref=None, fref=None):
+    d = dte(folio, PROV, tipo=tipo, ref=ref, fref=fref); d.update(tax_id_receptor=R5, fe=pd.Timestamp(fe), fi=pd.Timestamp(fe), monto_neto=2759290, monto_iva=524065, monto_total=3283355); return d
+ic5 = pd.DataFrame([d5(55775, 33, '2026-08-28'), d5(55829, 33, '2026-09-01'), d5(55854, 33, '2026-09-02'),
+                    d5(5305, 61, '2026-09-02', ref=33, fref=55854), d5(5306, 61, '2026-09-02', ref=33, fref=55854)])   # el DTE apunta a 55854, el calce manda
+def sfr(t, n, c, f, m): return dict(e='IVCB5', t=t, n=n, a='79770640', c=c, f=pd.Timestamp(f), s='V', m=m, gc='5-1', gd='G', ccd='O', fd=pd.Timestamp(f), nomaux='COMP')
+sf5 = pd.DataFrame([sfr('33', 55775, '00009578', '2026-08-31', -3283355), sfr('33', 55829, '00009590', '2026-09-14', -3283355), sfr('33', 55854, '00009591', '2026-09-14', -3283355),
+                    sfr('61', 5305, '00009592', '2026-09-14', 3283355), sfr('61', 5306, '00009593', '2026-09-14', 3283355)])
+opn5 = pd.DataFrame([dict(e='IVCB5', a='79770640', t='33', n=n, amt=3283355, pe=0, pt=0, pf=0, abierto=(3283355 if n == 55829 else 0)) for n in (55775, 55829, 55854)])  # FIFO ingenuo: dejó el saldo en 55829
+calce5 = pd.DataFrame([dict(e='IVCB5', c='00000584', a='79770640', g='FACTURA 55775 COMP', d=3283355, h=0), dict(e='IVCB5', c='00000584', a='79770640', g='FACTURA 55829 COMP', d=3283355, h=0),
+                       dict(e='IVCB5', c='00000584', a='79770640', g='CALCE NCE 5305 COMP', d=0, h=3283355), dict(e='IVCB5', c='00000584', a='79770640', g='CALCE NCE 5306 COMP', d=0, h=3283355)])
+o5 = {o['fo']: o for o in cr.cruzar(ic5, sf5, pay, opn5, f9, '2026-10-22', None, '2026', calce5)}
+for n in (55775, 55829):
+    assert o5[n]['ps'] == 'Neteada por NC' and o5[n]['pagado'] == 0 and 'saldo' not in o5[n] and o5[n]['ncm'] == 3283355, o5[n]
+assert o5[55775]['nc'][0].startswith(('5305 ', '5306 ')) and 'calce' in o5[55775]['nc'][0]
+assert o5[55854]['ps'] == 'En Proveedores' and o5[55854]['saldo'] == 3283355 and 'nc' not in o5[55854], o5[55854]   # el saldo se reasigna a la factura sin NC
+assert o5[5305]['ps'] == 'Nota de crédito' and o5[5305]['ncap'][0].startswith('55') and 'calce' in o5[5305]['ncap'][0], o5[5305]
+# sin calce: manda la referencia del DTE; NC parcial rebaja el saldo
+ic6 = pd.DataFrame([d5(100, 33, '2026-09-01'), d5(7, 61, '2026-09-05', ref=33, fref=100)]); ic6.loc[1, 'monto_total'] = 1000000
+sf6 = pd.DataFrame([sfr('33', 100, '00000001', '2026-09-02', -3283355), sfr('61', 7, '00000002', '2026-09-06', 1000000)])
+opn6 = pd.DataFrame([dict(e='IVCB5', a='79770640', t='33', n=100, amt=3283355, pe=0, pt=0, pf=0, abierto=2283355)])
+o6 = {o['fo']: o for o in cr.cruzar(ic6, sf6, pay, opn6, f9, '2026-10-22', None, '2026', pd.DataFrame())}
+assert o6[100]['ps'] == 'En Proveedores' and o6[100]['saldo'] == 2283355 and o6[100]['ncm'] == 1000000 and 'ref. DTE' in o6[100]['nc'][0], o6[100]
+assert 'nc' not in o5[55854] and o6[7]['ncap'][0].startswith('100 ')
+
 # render de las dos variantes
 class A: desde = '2026-01-01'; hasta = '2026-10-08'; corte = '2026-10-07'
 from datetime import datetime
